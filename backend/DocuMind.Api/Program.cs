@@ -9,7 +9,12 @@ var app = builder.Build();
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
+    // Serves the generated spec at /openapi/v1.json ...
     app.MapOpenApi();
+
+    // ... and points Swagger UI at it. Only the UI package is referenced: AddOpenApi above
+    // already builds the document, so Swashbuckle's own generator would be a second, competing pipeline.
+    app.UseSwaggerUI(options => options.SwaggerEndpoint("/openapi/v1.json", "DocuMind API v1"));
 }
 
 app.UseHttpsRedirection();
