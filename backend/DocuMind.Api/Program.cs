@@ -1,5 +1,7 @@
 using DocuMind.Application.Interfaces;
 using DocuMind.Application.Services;
+using DocuMind.Infrastructure.Persistence;
+using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -8,6 +10,12 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddOpenApi();
 
 builder.Services.AddScoped<IHealthService, HealthService>();
+
+builder.Services.AddDbContext<DocuMindDbContext>(options =>
+    options.UseNpgsql(
+        builder.Configuration.GetConnectionString("DefaultConnection")
+    )
+);
 
 // Registers the MVC machinery that discovers and invokes controller classes.
 builder.Services.AddControllers();
