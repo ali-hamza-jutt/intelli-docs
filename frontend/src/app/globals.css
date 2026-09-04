@@ -1,0 +1,257 @@
+@import "tailwindcss";
+
+/* ============================================================================
+   DESIGN TOKENS
+   Every colour, radius, shadow and font size in the product is declared once
+   here. Components reference the generated utilities (bg-brand, text-muted,
+   rounded-card) — no raw hex values anywhere else in the codebase.
+   ========================================================================= */
+@theme {
+  /* -- Brand ------------------------------------------------------------- */
+  --color-brand: #2563eb;
+  --color-brand-hover: #1d4ed8;
+  --color-brand-soft: #eff6ff;
+  --color-brand-softer: #dbeafe;
+  --color-brand-border: #bfdbfe;
+
+  /* -- Text -------------------------------------------------------------- */
+  --color-ink: #111827;
+  --color-ink-soft: #334155;
+  --color-muted: #64748b;
+  --color-subtle: #94a3b8;
+  --color-faint: #cbd5e1;
+
+  /* -- Surfaces ---------------------------------------------------------- */
+  --color-canvas: #f8fafc;
+  --color-surface: #ffffff;
+  --color-surface-alt: #f1f5f9;
+  --color-inverse: #111827;
+
+  /* -- Lines ------------------------------------------------------------- */
+  --color-line: #e2e8f0;
+  --color-line-soft: #f1f5f9;
+
+  /* -- Status ------------------------------------------------------------ */
+  --color-success: #16a34a;
+  --color-success-soft: #dcfce7;
+  --color-danger: #dc2626;
+  --color-danger-strong: #991b1b;
+  --color-danger-soft: #fef2f2;
+  --color-danger-softer: #fee2e2;
+  --color-danger-border: #fecaca;
+  --color-warning: #f59e0b;
+  --color-warning-soft: #fef3c7;
+
+  /* -- Radii ------------------------------------------------------------- */
+  --radius-field: 9px;
+  --radius-control: 8px;
+  --radius-card: 14px;
+  --radius-panel: 16px;
+  --radius-pill: 999px;
+
+  /* -- Type -------------------------------------------------------------- */
+  --font-sans: var(--font-inter), Inter, system-ui, -apple-system, "Segoe UI", sans-serif;
+
+  --text-micro: 11px;
+  --text-tiny: 12px;
+  --text-caption: 12.5px;
+  --text-small: 13px;
+  --text-body: 13.5px;
+  --text-base: 14px;
+  --text-lead: 14.5px;
+  --text-md: 15px;
+  --text-lg: 16px;
+  --text-xl: 20px;
+  --text-2xl: 24px;
+  --text-3xl: 26px;
+
+  /* -- Elevation --------------------------------------------------------- */
+  --shadow-card: 0 6px 24px -18px rgb(17 24 39 / 0.4);
+  --shadow-raised: 0 10px 28px -18px rgb(17 24 39 / 0.35);
+  --shadow-pop: 0 12px 32px -12px rgb(17 24 39 / 0.24);
+  --shadow-modal: 0 24px 60px -20px rgb(17 24 39 / 0.4);
+  --shadow-toast: 0 10px 30px -12px rgb(17 24 39 / 0.5);
+  --shadow-sheet: 0 -12px 40px -18px rgb(17 24 39 / 0.4);
+  --shadow-focus: 0 0 0 3px rgb(37 99 235 / 0.12);
+
+  /* -- Motion ------------------------------------------------------------ */
+  --animate-fade-up: fadeUp 0.35s both;
+  --animate-fade-in: fadeIn 0.2s both;
+  --animate-pop-in: popIn 0.2s ease both;
+  --animate-slide-in: slideIn 0.22s ease both;
+  --animate-sheet-up: sheetUp 0.24s ease both;
+  --animate-shimmer: shimmer 1.3s linear infinite;
+  --animate-caret: caret 1s step-end infinite;
+  --animate-pulse-dot: pulseDot 1.6s ease-in-out infinite;
+}
+
+@keyframes fadeUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes popIn { from { opacity: 0; transform: translateY(8px) scale(0.98); } to { opacity: 1; transform: none; } }
+@keyframes slideIn { from { opacity: 0; transform: translateX(16px); } to { opacity: 1; transform: none; } }
+@keyframes sheetUp { from { opacity: 0; transform: translateY(24px); } to { opacity: 1; transform: none; } }
+@keyframes shimmer { 0% { background-position: -400px 0; } 100% { background-position: 400px 0; } }
+@keyframes caret { 0%, 49% { opacity: 1; } 50%, 100% { opacity: 0; } }
+@keyframes pulseDot { 0%, 100% { opacity: 0.25; } 50% { opacity: 1; } }
+
+/* ============================================================================
+   BASE
+   ========================================================================= */
+@layer base {
+  html { -webkit-font-smoothing: antialiased; }
+
+  body {
+    background: var(--color-canvas);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    text-wrap: pretty;
+  }
+
+  button, input, textarea, select { font: inherit; color: inherit; }
+
+  :focus-visible {
+    outline: 2px solid var(--color-brand);
+    outline-offset: 2px;
+    border-radius: var(--radius-control);
+  }
+
+  ::selection { background: var(--color-brand-softer); }
+}
+
+/* ============================================================================
+   COMPONENT CLASSES
+   Any style combination that appears on more than one element lives here as a
+   named class, so JSX stays semantic and a visual change happens in one place.
+   ========================================================================= */
+@layer components {
+
+  /* -- Buttons ----------------------------------------------------------- */
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-field font-semibold
+           cursor-pointer transition-colors whitespace-nowrap disabled:cursor-not-allowed;
+  }
+  .btn-sm { @apply px-3 py-1.5 text-caption; }
+  .btn-md { @apply px-4 py-2.5 text-body; }
+  .btn-lg { @apply px-[22px] py-3.5 text-md; }
+
+  .btn-primary { @apply bg-brand text-white hover:bg-brand-hover; }
+  .btn-secondary { @apply border border-line bg-surface text-ink hover:bg-canvas; }
+  .btn-ghost { @apply text-ink hover:bg-surface-alt; }
+  .btn-danger { @apply border border-danger-border bg-surface text-danger hover:bg-danger-soft; }
+  .btn-disabled { @apply border border-line bg-canvas text-subtle cursor-not-allowed; }
+
+  /* Square icon-only buttons */
+  .icon-btn {
+    @apply inline-flex flex-none items-center justify-center rounded-control
+           cursor-pointer transition-colors text-muted;
+  }
+  .icon-btn-sm { @apply size-[30px] text-md; }
+  .icon-btn-md { @apply size-9 text-lg; }
+  .icon-btn-plain { @apply hover:bg-surface-alt hover:text-ink; }
+  .icon-btn-bordered { @apply border border-line bg-surface hover:bg-canvas hover:text-ink; }
+  .icon-btn-danger { @apply hover:bg-danger-soft hover:text-danger; }
+
+  /* Text-only inline action */
+  .link-action {
+    @apply cursor-pointer bg-transparent p-0 text-small font-medium text-brand
+           hover:underline;
+  }
+
+  /* -- Surfaces ---------------------------------------------------------- */
+  .card { @apply rounded-card border border-line bg-surface; }
+  .card-pad { @apply p-[18px]; }
+  .panel { @apply rounded-panel border border-line bg-surface; }
+  .card-hoverable {
+    @apply transition-[box-shadow,transform] duration-200
+           hover:shadow-raised hover:-translate-y-0.5;
+  }
+
+  /* Card header strip with a title on the left and an action on the right */
+  .card-header {
+    @apply flex items-center justify-between gap-3 border-b border-line px-[18px] py-4;
+  }
+  .card-title { @apply text-base font-semibold; }
+
+  /* Small uppercase section label */
+  .eyebrow {
+    @apply text-micro font-semibold tracking-[0.06em] text-subtle uppercase;
+  }
+
+  /* -- Form controls ----------------------------------------------------- */
+  .field {
+    @apply w-full rounded-field border border-line bg-surface px-[13px] py-[11px]
+           text-base outline-none transition-[border-color,box-shadow]
+           placeholder:text-subtle
+           focus:border-brand focus:shadow-focus;
+  }
+  .field-label { @apply mb-1.5 block text-small font-medium; }
+
+  .select {
+    @apply cursor-pointer rounded-field border border-line bg-surface px-3 py-2.5
+           text-body outline-none focus:border-brand;
+  }
+
+  .checkbox { @apply size-[15px] accent-[var(--color-brand)]; }
+
+  /* Search box: an icon and a borderless input sharing a bordered shell */
+  .search-shell {
+    @apply flex items-center gap-2 rounded-field px-3 py-2.5
+           transition-colors focus-within:border-faint;
+  }
+  .search-shell-solid { @apply border border-transparent bg-surface-alt; }
+  .search-shell-outlined { @apply border border-line bg-surface; }
+  .search-input {
+    @apply w-full border-0 bg-transparent text-body outline-none placeholder:text-subtle;
+  }
+
+  /* -- Navigation -------------------------------------------------------- */
+  .nav-item {
+    @apply flex w-full items-center gap-[11px] rounded-field px-[11px] py-2.5
+           text-base font-medium text-left cursor-pointer transition-colors
+           text-muted hover:bg-surface-alt;
+  }
+  .nav-item-active { @apply bg-brand-soft text-brand hover:bg-brand-soft; }
+
+  /* -- Badges ------------------------------------------------------------ */
+  .badge {
+    @apply inline-flex items-center gap-1.5 rounded-[7px] px-2 py-1
+           text-[11.5px] font-semibold;
+  }
+  .badge-success { @apply bg-success-soft text-success; }
+  .badge-info { @apply bg-brand-soft text-brand; }
+  .badge-danger { @apply bg-danger-softer text-danger; }
+
+  /* Rounded square holding a file/folder glyph */
+  .tile { @apply inline-flex flex-none items-center justify-center rounded-field; }
+  .tile-neutral { @apply bg-surface-alt text-muted; }
+  .tile-brand { @apply bg-brand-soft text-brand; }
+  .tile-danger { @apply bg-danger-soft text-danger; }
+
+  /* -- Feedback ---------------------------------------------------------- */
+  .alert-danger {
+    @apply flex flex-wrap items-center gap-3 rounded-control border
+           border-danger-border bg-danger-soft px-3.5 py-3;
+  }
+  .alert-danger-text { @apply m-0 min-w-[180px] flex-1 text-small text-danger-strong; }
+
+  .skeleton-bar {
+    @apply rounded-md bg-[linear-gradient(90deg,var(--color-surface-alt),var(--color-line),var(--color-surface-alt))]
+           bg-[length:400px_100%] animate-shimmer;
+  }
+
+  .progress-track { @apply overflow-hidden rounded-pill bg-surface-alt; }
+  .progress-fill { @apply h-full rounded-pill bg-brand transition-[width] duration-500; }
+
+  /* -- Layout helpers ---------------------------------------------------- */
+  .page { @apply mx-auto w-full max-w-[1080px] px-5 pb-12 pt-8 animate-fade-up; }
+  .page-narrow { @apply mx-auto w-full max-w-[860px] px-5 pb-12 pt-8 animate-fade-up; }
+  .page-title { @apply m-0 text-2xl font-bold tracking-[-0.025em]; }
+  .page-subtitle { @apply mt-1.5 text-base text-muted; }
+
+  .divider { @apply h-px bg-line-soft; }
+
+  /* Auto-fitting responsive grid at a few standard minimum column widths */
+  .grid-fit-sm { @apply grid gap-3 [grid-template-columns:repeat(auto-fit,minmax(180px,1fr))]; }
+  .grid-fit-md { @apply grid gap-3.5 [grid-template-columns:repeat(auto-fit,minmax(230px,1fr))]; }
+  .grid-fit-lg { @apply grid gap-4 [grid-template-columns:repeat(auto-fit,minmax(300px,1fr))]; }
+}
