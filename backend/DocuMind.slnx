@@ -1,0 +1,6 @@
+<Solution>
+  <Project Path="DocuMind.Api/DocuMind.Api.csproj" />
+  <Project Path="DocuMind.Application/DocuMind.Application.csproj" />
+  <Project Path="DocuMind.Domain/DocuMind.Domain.csproj" />
+  <Project Path="DocuMind.Infrastructure/DocuMind.Infrastructure.csproj" />
+</Solution>
