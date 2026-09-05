@@ -1,6 +1,7 @@
 using DocuMind.Application.Interfaces;
 using DocuMind.Application.Services;
 using DocuMind.Infrastructure.Persistence;
+using DocuMind.Infrastructure.Repositories;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -10,6 +11,10 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddOpenApi();
 
 builder.Services.AddScoped<IHealthService, HealthService>();
+
+// Document feature: the service holds the use-case logic, the repository the EF Core access.
+builder.Services.AddScoped<IDocumentService, DocumentService>();
+builder.Services.AddScoped<IDocumentRepository, DocumentRepository>();
 
 builder.Services.AddDbContext<DocuMindDbContext>(options =>
     options.UseNpgsql(
