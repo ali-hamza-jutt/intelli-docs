@@ -1,10 +1,12 @@
 using DocuMind.Application.DTOs.Documents;
 using DocuMind.Application.Interfaces;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace DocuMind.Api.Controllers;
 
 [ApiController]
+[Authorize]
 [Route("api/[controller]")]
 public class DocumentsController : ControllerBase
 {
@@ -17,7 +19,9 @@ public class DocumentsController : ControllerBase
     }
 
     [HttpPost]
-    public async Task<IActionResult> Create(
+    [ProducesResponseType(typeof(DocumentResponse), StatusCodes.Status201Created)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<ActionResult<DocumentResponse>> Create(
         CreateDocumentRequest request)
     {
         var document =
@@ -31,7 +35,9 @@ public class DocumentsController : ControllerBase
     }
 
     [HttpGet]
-    public async Task<IActionResult> GetAll()
+    [ProducesResponseType(typeof(List<DocumentResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<ActionResult<List<DocumentResponse>>> GetAll()
     {
         var documents =
             await _documentService.GetAllAsync();
@@ -40,11 +46,14 @@ public class DocumentsController : ControllerBase
     }
 
     [HttpGet("{id:guid}")]
-    public async Task<IActionResult> GetById(Guid id)
+    [ProducesResponseType(typeof(DocumentResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<DocumentResponse>> GetById(Guid id)
     {
         var document =
             await _documentService.GetByIdAsync(id);
 
+        // A document owned by another user is reported as missing, never as forbidden.
         if (document is null)
         {
             return NotFound();
@@ -54,6 +63,8 @@ public class DocumentsController : ControllerBase
     }
 
     [HttpDelete("{id:guid}")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> Delete(Guid id)
     {
         var deleted =

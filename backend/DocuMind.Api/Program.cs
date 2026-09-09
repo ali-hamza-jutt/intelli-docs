@@ -1,33 +1,28 @@
+using DocuMind.Api.Extensions;
+using DocuMind.Api.Middleware;
 using DocuMind.Application.Interfaces;
-using DocuMind.Application.Services;
-using DocuMind.Infrastructure.Persistence;
-using DocuMind.Infrastructure.Repositories;
-using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Mvc;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
 
-builder.Services.AddScoped<IHealthService, HealthService>();
+builder.Services.AddPersistence(builder.Configuration);
+builder.Services.AddApplicationServices();
+builder.Services.AddTokenAuthentication(builder.Configuration);
+builder.Services.AddSpaCors(builder.Configuration);
 
-// Document feature: the service holds the use-case logic, the repository the EF Core access.
-builder.Services.AddScoped<IDocumentService, DocumentService>();
-builder.Services.AddScoped<IDocumentRepository, DocumentRepository>();
-
-builder.Services.AddDbContext<DocuMindDbContext>(options =>
-    options.UseNpgsql(
-        builder.Configuration.GetConnectionString("DefaultConnection")
-    )
-);
-
-// Registers the MVC machinery that discovers and invokes controller classes.
-builder.Services.AddControllers();
+// Restricting to JSON keeps the OpenAPI document (and the generated client) free of
+// text/plain and text/json duplicates of every response type.
+builder.Services.AddControllers(options =>
+    options.Filters.Add(new ProducesAttribute("application/json")));
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
+// First in the pipeline so it can catch anything thrown further down.
+app.UseMiddleware<ExceptionHandlingMiddleware>();
+
 if (app.Environment.IsDevelopment())
 {
     // Serves the generated spec at /openapi/v1.json ...
@@ -37,10 +32,18 @@ if (app.Environment.IsDevelopment())
     // already builds the document, so Swashbuckle's own generator would be a second, competing pipeline.
     app.UseSwaggerUI(options => options.SwaggerEndpoint("/openapi/v1.json", "DocuMind API v1"));
 }
+else
+{
+    // Redirecting in development would break the SPA's plain-HTTP calls to port 5100.
+    app.UseHttpsRedirection();
+}
 
-app.UseHttpsRedirection();
+app.UseCors(ServiceCollectionExtensions.SpaCorsPolicy);
 
-// Routes matching requests into those controllers. Without this, AddControllers above is inert.
+// Order matters: authentication populates the principal, authorization then inspects it.
+app.UseAuthentication();
+app.UseAuthorization();
+
 app.MapControllers();
 
 app.MapGet("/health", (IHealthService health) => health.GetStatus())

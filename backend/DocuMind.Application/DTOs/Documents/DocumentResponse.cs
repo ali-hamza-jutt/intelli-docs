@@ -2,13 +2,13 @@ namespace DocuMind.Application.DTOs.Documents;
 
 public class DocumentResponse
 {
-    public Guid Id { get; set; }
+    public required Guid Id { get; set; }
 
-    public string FileName { get; set; } = string.Empty;
+    public required string FileName { get; set; }
 
-    public string ContentType { get; set; } = string.Empty;
+    public required string ContentType { get; set; }
 
-    public long FileSize { get; set; }
+    public required long FileSize { get; set; }
 
-    public DateTime CreatedAt { get; set; }
+    public required DateTime CreatedAt { get; set; }
 }

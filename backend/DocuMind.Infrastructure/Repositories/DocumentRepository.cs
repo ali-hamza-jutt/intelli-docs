@@ -19,18 +19,21 @@ public class DocumentRepository : IDocumentRepository
         await _context.Documents.AddAsync(document);
     }
 
-    public async Task<List<Document>> GetAllAsync()
+    public async Task<List<Document>> GetAllForUserAsync(Guid userId)
     {
         return await _context.Documents
             .AsNoTracking()
+            .Where(d => d.UserId == userId)
+            .OrderByDescending(d => d.CreatedAt)
             .ToListAsync();
     }
 
-    public async Task<Document?> GetByIdAsync(Guid id)
+    public async Task<Document?> GetByIdForUserAsync(Guid id, Guid userId)
     {
+        // The owner predicate is part of the lookup, so there is no window in which a document
+        // belonging to someone else has been loaded and is waiting to be checked.
         return await _context.Documents
-            .AsNoTracking()
-            .FirstOrDefaultAsync(d => d.Id == id);
+            .FirstOrDefaultAsync(d => d.Id == id && d.UserId == userId);
     }
 
     public async Task DeleteAsync(Document document)

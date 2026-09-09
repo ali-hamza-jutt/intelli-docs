@@ -2,11 +2,10 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
 import { Checkbox, Field } from "@/components/ui/Field";
+import { Icon } from "@/components/ui/Icon";
 import { cn } from "@/lib/cn";
-import { useToast } from "@/components/ui/Toast";
 
 export type AuthField = {
   id: string;
@@ -29,9 +28,6 @@ export type AuthConfig = {
   footNote: string;
   footLink: string;
   footHref: string;
-  /** Where a successful submit lands, plus the toast it raises. */
-  redirectTo: string;
-  successMessage: string;
 };
 
 const STRENGTH_LABELS = ["Too short", "Weak", "Good", "Strong"];
@@ -45,36 +41,70 @@ function scorePassword(value: string) {
   );
 }
 
-/** One form driving all four auth screens; the differences live in AuthConfig. */
-export function AuthForm({ config }: { config: AuthConfig }) {
+/**
+ * Presentational shell for all four auth screens. The page supplies the submit handler, so this
+ * component knows nothing about the API — it only reports values, pending state and errors.
+ */
+export function AuthForm({
+  config,
+  onSubmit,
+  isPending = false,
+  errorMessage,
+}: {
+  config: AuthConfig;
+  onSubmit: (values: Record<string, string>) => void;
+  isPending?: boolean;
+  errorMessage?: string | null;
+}) {
   const [password, setPassword] = useState("");
-  const router = useRouter();
-  const toast = useToast();
+  const [mismatch, setMismatch] = useState(false);
 
   const score = scorePassword(password);
+
+  const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+
+    const form = new FormData(event.currentTarget);
+    const values = Object.fromEntries(
+      config.fields.map((field) => [field.id, String(form.get(field.id) ?? "")]),
+    );
+
+    // Confirm-password is a client-side concern; the API never sees it.
+    if ("confirm" in values && values.confirm !== values.password) {
+      setMismatch(true);
+      return;
+    }
+
+    setMismatch(false);
+    onSubmit(values);
+  };
+
+  const error = mismatch ? "The two passwords do not match." : errorMessage;
 
   return (
     <div className="panel p-8 shadow-[0_4px_20px_-14px_rgb(17_24_39/0.2)]">
       <h1 className="m-0 mb-1.5 text-2xl font-bold tracking-[-0.02em]">{config.title}</h1>
-      <p className="m-0 mb-6.5 text-base text-muted">{config.subtitle}</p>
+      <p className="m-0 mb-6 text-base text-muted">{config.subtitle}</p>
 
-      <form
-        className="flex flex-col gap-4"
-        onSubmit={(e) => {
-          e.preventDefault();
-          toast(config.successMessage);
-          router.push(config.redirectTo);
-        }}
-      >
+      {error && (
+        <div className="alert-danger mb-4" role="alert">
+          <Icon name="alert" className="text-md text-danger" />
+          <p className="alert-danger-text">{error}</p>
+        </div>
+      )}
+
+      <form className="flex flex-col gap-4" onSubmit={handleSubmit} noValidate>
         {config.fields.map((field) => (
           <Field
             key={field.id}
             id={field.id}
+            name={field.id}
             label={field.label}
             type={field.type}
             placeholder={field.placeholder}
             autoComplete={field.autoComplete}
-            value={field.strength ? password : undefined}
+            required
+            disabled={isPending}
             onChange={field.strength ? (e) => setPassword(e.target.value) : undefined}
             hint={
               field.strength ? (
@@ -99,7 +129,7 @@ export function AuthForm({ config }: { config: AuthConfig }) {
 
         {config.showRemember && (
           <div className="flex items-center justify-between gap-3">
-            <Checkbox label="Remember me" />
+            <Checkbox label="Remember me" defaultChecked disabled={isPending} />
             <Link href="/forgot-password" className="link-action text-body">
               Forgot password?
             </Link>
@@ -110,17 +140,19 @@ export function AuthForm({ config }: { config: AuthConfig }) {
           <Checkbox
             label="I agree to the Terms and Privacy Policy."
             className="items-start leading-normal"
+            required
+            disabled={isPending}
           />
         )}
 
-        <Button type="submit" size="lg" fullWidth className="py-3 text-lead">
-          {config.cta}
+        <Button type="submit" size="lg" fullWidth className="py-3 text-lead" disabled={isPending}>
+          {isPending ? "Please wait…" : config.cta}
         </Button>
       </form>
 
       {config.showDivider && (
         <>
-          <div className="my-5.5 flex items-center gap-3">
+          <div className="my-5 flex items-center gap-3">
             <span className="h-px flex-1 bg-line" />
             <span className="text-tiny text-subtle">OR</span>
             <span className="h-px flex-1 bg-line" />
@@ -131,7 +163,7 @@ export function AuthForm({ config }: { config: AuthConfig }) {
         </>
       )}
 
-      <p className="mt-5.5 mb-0 text-center text-body text-muted">
+      <p className="mt-5 mb-0 text-center text-body text-muted">
         {config.footNote}{" "}
         <Link href={config.footHref} className="link-action text-body font-semibold">
           {config.footLink}

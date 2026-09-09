@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import { ToastProvider } from "@/components/ui/Toast";
+import { QueryProvider } from "@/lib/query/QueryProvider";
+import { AuthProvider } from "@/lib/auth/AuthProvider";
 import "./globals.css";
 
 const inter = Inter({
@@ -19,7 +21,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" className={inter.variable}>
       <body>
-        <ToastProvider>{children}</ToastProvider>
+        {/* AuthProvider needs the query client to clear caches on sign-out, so it sits inside. */}
+        <QueryProvider>
+          <AuthProvider>
+            <ToastProvider>{children}</ToastProvider>
+          </AuthProvider>
+        </QueryProvider>
       </body>
     </html>
   );

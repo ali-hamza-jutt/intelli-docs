@@ -7,16 +7,24 @@ namespace DocuMind.Application.Services;
 public class DocumentService : IDocumentService
 {
     private readonly IDocumentRepository _repository;
+    private readonly ICurrentUser _currentUser;
 
-    public DocumentService(IDocumentRepository repository)
+    public DocumentService(
+        IDocumentRepository repository,
+        ICurrentUser currentUser)
     {
         _repository = repository;
+        _currentUser = currentUser;
     }
 
     public async Task<DocumentResponse> CreateAsync(
         CreateDocumentRequest request)
     {
+        // The owner comes from the bearer token, never from the request body.
+        var userId = _currentUser.RequireUserId();
+
         var document = new Document(
+            userId,
             request.FileName,
             request.ContentType,
             request.FileSize
@@ -30,7 +38,8 @@ public class DocumentService : IDocumentService
 
     public async Task<List<DocumentResponse>> GetAllAsync()
     {
-        var documents = await _repository.GetAllAsync();
+        var userId = _currentUser.RequireUserId();
+        var documents = await _repository.GetAllForUserAsync(userId);
 
         return documents
             .Select(MapToResponse)
@@ -39,8 +48,10 @@ public class DocumentService : IDocumentService
 
     public async Task<DocumentResponse?> GetByIdAsync(Guid id)
     {
-        var document = await _repository.GetByIdAsync(id);
+        var userId = _currentUser.RequireUserId();
+        var document = await _repository.GetByIdForUserAsync(id, userId);
 
+        // A document owned by someone else is indistinguishable from one that does not exist.
         return document is null
             ? null
             : MapToResponse(document);
@@ -48,7 +59,8 @@ public class DocumentService : IDocumentService
 
     public async Task<bool> DeleteAsync(Guid id)
     {
-        var document = await _repository.GetByIdAsync(id);
+        var userId = _currentUser.RequireUserId();
+        var document = await _repository.GetByIdForUserAsync(id, userId);
 
         if (document is null)
         {
