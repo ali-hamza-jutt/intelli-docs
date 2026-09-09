@@ -6,7 +6,8 @@ import { cn } from "@/lib/cn";
 import { Icon, type IconName } from "@/components/ui/Icon";
 import { Avatar } from "@/components/ui/Avatar";
 import { LogoMark } from "./Logo";
-import { CURRENT_USER } from "@/lib/data";
+import { useAuth } from "@/lib/auth/AuthProvider";
+import { initialsFor } from "@/lib/auth/initials";
 
 export const PRIMARY_NAV: { href: string; label: string; icon: IconName }[] = [
   { href: "/dashboard", label: "Dashboard", icon: "grid" },
@@ -32,6 +33,7 @@ export function AppSidebar({
   onToggle: () => void;
 }) {
   const pathname = usePathname();
+  const { user } = useAuth();
 
   return (
     <aside
@@ -75,11 +77,11 @@ export function AppSidebar({
         </button>
 
         <div className="mt-1 flex items-center gap-2.5 rounded-field bg-canvas px-[11px] py-2.5">
-          <Avatar initials={CURRENT_USER.initials} size="sm" />
+          <Avatar initials={initialsFor(user?.name ?? "")} size="sm" />
           {open && (
             <span className="min-w-0">
-              <span className="block truncate text-small font-semibold">{CURRENT_USER.name}</span>
-              <span className="block truncate text-[11.5px] text-subtle">{CURRENT_USER.email}</span>
+              <span className="block truncate text-small font-semibold">{user?.name}</span>
+              <span className="block truncate text-[11.5px] text-subtle">{user?.email}</span>
             </span>
           )}
         </div>

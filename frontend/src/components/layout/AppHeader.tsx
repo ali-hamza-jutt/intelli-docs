@@ -1,11 +1,9 @@
 "use client";
 
-import Link from "next/link";
 import { SearchInput } from "@/components/ui/Field";
 import { IconButton } from "@/components/ui/IconButton";
-import { Avatar } from "@/components/ui/Avatar";
 import { LogoMark } from "./Logo";
-import { CURRENT_USER } from "@/lib/data";
+import { UserMenu } from "./UserMenu";
 import { useToast } from "@/components/ui/Toast";
 
 export function AppHeader({
@@ -43,9 +41,7 @@ export function AppHeader({
         onClick={() => toast("No new notifications")}
       />
 
-      <Link href="/settings" aria-label="Account" className="rounded-full">
-        <Avatar initials={CURRENT_USER.initials} />
-      </Link>
+      <UserMenu />
     </header>
   );
 }
