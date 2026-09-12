@@ -7,7 +7,9 @@ import { Avatar } from "@/components/ui/Avatar";
 import { Checkbox, Field, Select } from "@/components/ui/Field";
 import { Icon } from "@/components/ui/Icon";
 import { Tabs } from "@/components/ui/Tabs";
-import { CURRENT_USER, PREFERENCE_TOGGLES, SESSIONS } from "@/lib/data";
+import { PREFERENCE_TOGGLES, SESSIONS } from "@/lib/data";
+import { useAuth } from "@/lib/auth/AuthProvider";
+import { initialsFor } from "@/lib/auth/initials";
 import { useToast } from "@/components/ui/Toast";
 
 const TABS = ["Profile", "Preferences", "Security", "Data"] as const;
@@ -37,6 +39,7 @@ function SettingRow({
 
 export default function SettingsPage() {
   const [tab, setTab] = useState<string>("Profile");
+  const { user } = useAuth();
   const toast = useToast();
 
   return (
@@ -49,15 +52,15 @@ export default function SettingsPage() {
       {tab === "Profile" && (
         <Card className="p-[22px] animate-fade-in">
           <div className="mb-5.5 flex items-center gap-4">
-            <Avatar initials={CURRENT_USER.initials} size="lg" />
+            <Avatar initials={initialsFor(user?.name ?? "")} size="lg" />
             <Button variant="secondary" size="sm" onClick={() => toast("Avatar updated")}>
               Change avatar
             </Button>
           </div>
 
           <div className="grid gap-4 [grid-template-columns:repeat(auto-fit,minmax(220px,1fr))]">
-            <Field label="Name" defaultValue={CURRENT_USER.name} />
-            <Field label="Email" type="email" defaultValue={CURRENT_USER.email} />
+            <Field key={user?.id} label="Name" defaultValue={user?.name ?? ""} />
+            <Field key={user?.email} label="Email" type="email" defaultValue={user?.email ?? ""} disabled />
           </div>
 
           <Button className="mt-5" onClick={() => toast("Settings updated")}>
