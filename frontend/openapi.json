@@ -277,7 +277,7 @@
         }
       }
     },
-    "/api/Documents": {
+    "/api/Documents/upload-ticket": {
       "post": {
         "tags": [
           "Documents"
@@ -286,17 +286,76 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/CreateDocumentRequest"
+                "$ref": "#/components/schemas/UploadTicketRequest"
               }
             },
             "text/json": {
               "schema": {
-                "$ref": "#/components/schemas/CreateDocumentRequest"
+                "$ref": "#/components/schemas/UploadTicketRequest"
               }
             },
             "application/*+json": {
               "schema": {
-                "$ref": "#/components/schemas/CreateDocumentRequest"
+                "$ref": "#/components/schemas/UploadTicketRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UploadTicketResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/Documents/confirm": {
+      "post": {
+        "tags": [
+          "Documents"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConfirmUploadRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConfirmUploadRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConfirmUploadRequest"
               }
             }
           },
@@ -313,6 +372,70 @@
               }
             }
           },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/Documents/upload": {
+      "post": {
+        "tags": [
+          "Documents"
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "file": {
+                    "$ref": "#/components/schemas/IFormFile"
+                  }
+                }
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DocumentResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
           "401": {
             "description": "Unauthorized",
             "content": {
@@ -324,7 +447,9 @@
             }
           }
         }
-      },
+      }
+    },
+    "/api/Documents": {
       "get": {
         "tags": [
           "Documents"
@@ -427,6 +552,79 @@
         }
       }
     },
+    "/api/Documents/{id}/status": {
+      "get": {
+        "tags": [
+          "Documents"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DocumentStatusResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/Documents/{id}/download": {
+      "get": {
+        "tags": [
+          "Documents"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/Health": {
       "get": {
         "tags": [
@@ -479,22 +677,22 @@
           }
         }
       },
-      "CreateDocumentRequest": {
+      "ConfirmUploadRequest": {
+        "required": [
+          "publicId",
+          "fileName"
+        ],
         "type": "object",
         "properties": {
+          "publicId": {
+            "maxLength": 400,
+            "minLength": 0,
+            "type": "string"
+          },
           "fileName": {
+            "maxLength": 260,
+            "minLength": 1,
             "type": "string"
-          },
-          "contentType": {
-            "type": "string"
-          },
-          "fileSize": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
-            "format": "int64"
           }
         }
       },
@@ -502,8 +700,10 @@
         "required": [
           "id",
           "fileName",
+          "originalFileName",
           "contentType",
           "fileSize",
+          "status",
           "createdAt"
         ],
         "type": "object",
@@ -515,6 +715,9 @@
           "fileName": {
             "type": "string"
           },
+          "originalFileName": {
+            "type": "string"
+          },
           "contentType": {
             "type": "string"
           },
@@ -526,11 +729,60 @@
             ],
             "format": "int64"
           },
+          "status": {
+            "type": "string"
+          },
+          "errorMessage": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
           "createdAt": {
             "type": "string",
             "format": "date-time"
+          },
+          "processedAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
           }
         }
+      },
+      "DocumentStatusResponse": {
+        "required": [
+          "id",
+          "status"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "status": {
+            "type": "string"
+          },
+          "errorMessage": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "processedAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          }
+        }
+      },
+      "IFormFile": {
+        "type": "string",
+        "format": "binary"
       },
       "LoginRequest": {
         "required": [
@@ -620,6 +872,74 @@
             "maxLength": 120,
             "minLength": 2,
             "type": "string"
+          }
+        }
+      },
+      "UploadTicketRequest": {
+        "required": [
+          "fileName"
+        ],
+        "type": "object",
+        "properties": {
+          "fileName": {
+            "maxLength": 260,
+            "minLength": 1,
+            "type": "string"
+          },
+          "fileSize": {
+            "maximum": 9223372036854776000,
+            "minimum": 1,
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          }
+        }
+      },
+      "UploadTicketResponse": {
+        "required": [
+          "uploadUrl",
+          "apiKey",
+          "publicId",
+          "timestamp",
+          "signature",
+          "resourceType",
+          "maxFileSizeBytes"
+        ],
+        "type": "object",
+        "properties": {
+          "uploadUrl": {
+            "type": "string"
+          },
+          "apiKey": {
+            "type": "string"
+          },
+          "publicId": {
+            "type": "string"
+          },
+          "timestamp": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "signature": {
+            "type": "string"
+          },
+          "resourceType": {
+            "type": "string"
+          },
+          "maxFileSizeBytes": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
           }
         }
       },

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Modal } from "@/components/ui/Modal";
 import { Button } from "@/components/ui/Button";
@@ -8,133 +8,198 @@ import { Icon } from "@/components/ui/Icon";
 import { Progress } from "@/components/ui/Progress";
 import { Tile } from "@/components/ui/Tile";
 import { cn } from "@/lib/cn";
-import { UPLOAD_STEPS } from "@/lib/data";
+import { formatBytes } from "@/lib/format";
+import { ApiError } from "@/lib/api/client";
+import { useUploadDocument } from "@/lib/api/useUploadDocument";
+import type { DocumentResponse } from "@/lib/api/model";
 import { useToast } from "@/components/ui/Toast";
 
-const STEP_MS = 620;
-const SAMPLE = { name: "Employee Handbook.pdf", size: "2.4 MB", chunks: 124 };
+const MAX_BYTES = 20 * 1024 * 1024;
+const ACCEPTED = ".pdf";
 
-type Phase = "idle" | "running" | "done";
+type Phase = "idle" | "uploading" | "done" | "error";
 
 /**
- * The flow itself. Mounted only while the dialog is open, so reopening starts
- * from `idle` without needing an effect to reset it.
+ * The upload flow itself. Mounted only while the dialog is open, so reopening always starts
+ * from `idle` without an effect to reset it.
  */
 function UploadFlow({ onClose }: { onClose: () => void }) {
   const [phase, setPhase] = useState<Phase>("idle");
-  const [step, setStep] = useState(0);
+  const [file, setFile] = useState<File | null>(null);
+  const [uploaded, setUploaded] = useState<DocumentResponse | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [dragging, setDragging] = useState(false);
+
+  const inputRef = useRef<HTMLInputElement>(null);
+  const { upload, cancel, progress } = useUploadDocument();
   const router = useRouter();
   const toast = useToast();
 
-  useEffect(() => {
-    if (phase !== "running") return;
+  /** Cheap client-side checks. The API repeats them — this only saves a round trip. */
+  const reject = (candidate: File): string | null => {
+    if (!candidate.name.toLowerCase().endsWith(ACCEPTED)) {
+      return "Only PDF files are supported.";
+    }
+    if (candidate.size === 0) {
+      return "That file is empty.";
+    }
+    if (candidate.size > MAX_BYTES) {
+      return `That file is ${formatBytes(candidate.size)}; the limit is 20 MB.`;
+    }
+    return null;
+  };
 
-    const timer = setTimeout(() => {
-      if (step >= UPLOAD_STEPS.length - 1) {
-        setPhase("done");
-        toast("Document uploaded");
-      } else {
-        setStep((s) => s + 1);
+  const start = async (candidate: File) => {
+    const problem = reject(candidate);
+
+    if (problem) {
+      setFile(candidate);
+      setError(problem);
+      setPhase("error");
+      return;
+    }
+
+    setFile(candidate);
+    setError(null);
+    setPhase("uploading");
+
+    try {
+      const document = await upload(candidate);
+      setUploaded(document);
+      setPhase("done");
+      toast("Document uploaded");
+    } catch (cause) {
+      if (cause instanceof ApiError && cause.errorCode === "UPLOAD_CANCELLED") {
+        setPhase("idle");
+        setFile(null);
+        return;
       }
-    }, STEP_MS);
 
-    return () => clearTimeout(timer);
-  }, [phase, step, toast]);
+      setError(cause instanceof ApiError ? cause.message : "Upload failed. Please try again.");
+      setPhase("error");
+    }
+  };
 
-  const percent = Math.round(((step + 1) / UPLOAD_STEPS.length) * 100);
+  const pickFrom = (list: FileList | null) => {
+    const candidate = list?.[0];
+    if (candidate) void start(candidate);
+  };
 
-  if (phase === "idle") {
-    return (
-      <div className="rounded-card border-[1.5px] border-dashed border-faint bg-canvas px-6 py-10 text-center transition-colors hover:border-brand hover:bg-brand-soft">
-        <span className="tile mx-auto size-11 rounded-xl border border-line bg-surface text-xl text-brand">
-          <Icon name="upload" />
-        </span>
-        <p className="mt-4 mb-1 text-md font-semibold">Drop your documents here</p>
-        <p className="mb-[18px] text-small text-muted">PDF, DOCX, TXT up to 20MB</p>
-        <Button variant="secondary" onClick={() => setPhase("running")}>
-          Browse Files
-        </Button>
-      </div>
-    );
-  }
-
-  if (phase === "running") {
+  if (phase === "uploading" && file) {
     return (
       <>
         <div className="rounded-xl border border-line p-4">
           <div className="flex items-center gap-3">
             <Tile icon="fileText" tone="brand" className="size-[34px] text-lg" />
             <div className="min-w-0 flex-1">
-              <p className="m-0 truncate text-base font-semibold">{SAMPLE.name}</p>
-              <p className="mt-0.5 text-tiny text-subtle">{SAMPLE.size}</p>
+              <p className="m-0 truncate text-base font-semibold">{file.name}</p>
+              <p className="mt-0.5 text-tiny text-subtle">{formatBytes(file.size)}</p>
             </div>
-            <span className="text-small font-semibold text-brand">{percent}%</span>
+            <span className="text-small font-semibold text-brand tabular-nums">{progress}%</span>
           </div>
-          <Progress value={percent} className="mt-3.5" />
+          <Progress value={progress} className="mt-3.5" />
         </div>
 
-        <ol className="mt-[18px] flex list-none flex-col gap-0.5 p-0">
-          {UPLOAD_STEPS.map((label, i) => {
-            const done = i < step;
-            const active = i === step;
-            return (
-              <li
-                key={label}
-                className={cn(
-                  "flex items-center gap-2.5 px-1 py-1.5 text-body transition-colors",
-                  done ? "text-ink" : active ? "text-brand" : "text-subtle",
-                )}
-              >
-                <span
-                  className={cn(
-                    "inline-flex size-4 flex-none items-center justify-center text-small",
-                    done ? "text-success" : active ? "text-brand" : "text-faint",
-                  )}
-                >
-                  <Icon name={done ? "check" : active ? "loader" : "clock"} spinning={active} />
-                </span>
-                {label}
-              </li>
-            );
-          })}
-        </ol>
+        <p className="mt-4 text-center text-small text-muted">
+          {progress < 100 ? "Uploading…" : "Finishing up…"}
+        </p>
+
+        <div className="mt-4 flex justify-center">
+          <Button variant="secondary" size="sm" onClick={cancel}>
+            Cancel upload
+          </Button>
+        </div>
       </>
     );
   }
 
+  if (phase === "done" && uploaded) {
+    return (
+      <div className="px-2 py-6 text-center animate-fade-up">
+        <span className="inline-flex size-[46px] items-center justify-center rounded-full bg-success-soft text-[22px] text-success">
+          <Icon name="check" />
+        </span>
+        <p className="mt-4 mb-1 text-lg font-semibold">{uploaded.fileName} uploaded</p>
+        <p className="m-0 text-body text-muted">
+          {formatBytes(uploaded.fileSize)} · queued for processing.
+        </p>
+
+        <div className="mt-[22px] flex justify-center gap-2.5">
+          <Button variant="secondary" onClick={onClose}>
+            Done
+          </Button>
+          <Button
+            onClick={() => {
+              onClose();
+              router.push(`/documents/${uploaded.id}`);
+            }}
+          >
+            View document
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="px-2 py-6 text-center animate-fade-up">
-      <span className="inline-flex size-[46px] items-center justify-center rounded-full bg-success-soft text-[22px] text-success">
-        <Icon name="check" />
-      </span>
-      <p className="mt-4 mb-1 text-lg font-semibold">{SAMPLE.name} is ready</p>
-      <p className="m-0 text-body text-muted">
-        {SAMPLE.chunks} knowledge chunks indexed. You can ask about it now.
-      </p>
-      <div className="mt-[22px] flex justify-center gap-2.5">
-        <Button variant="secondary" onClick={onClose}>
-          Done
-        </Button>
-        <Button
-          onClick={() => {
-            onClose();
-            router.push("/chat");
+    <>
+      {phase === "error" && error && (
+        <div className="alert-danger mb-4" role="alert">
+          <Icon name="alert" className="text-md text-danger" />
+          <p className="alert-danger-text">{error}</p>
+        </div>
+      )}
+
+      <div
+        onDragOver={(e) => {
+          e.preventDefault();
+          setDragging(true);
+        }}
+        onDragLeave={() => setDragging(false)}
+        onDrop={(e) => {
+          e.preventDefault();
+          setDragging(false);
+          pickFrom(e.dataTransfer.files);
+        }}
+        className={cn(
+          "rounded-card border-[1.5px] border-dashed px-6 py-10 text-center transition-colors",
+          dragging ? "border-brand bg-brand-soft" : "border-faint bg-canvas hover:border-brand",
+        )}
+      >
+        <span className="tile mx-auto size-11 rounded-xl border border-line bg-surface text-xl text-brand">
+          <Icon name="upload" />
+        </span>
+        <p className="mt-4 mb-1 text-md font-semibold">
+          {dragging ? "Drop to upload" : "Drop your document here"}
+        </p>
+        <p className="mb-[18px] text-small text-muted">PDF up to 20MB</p>
+
+        <input
+          ref={inputRef}
+          type="file"
+          accept={ACCEPTED}
+          className="sr-only"
+          onChange={(e) => {
+            pickFrom(e.target.files);
+            // Allows re-picking the same file after an error.
+            e.target.value = "";
           }}
-        >
-          Chat with document
+        />
+
+        <Button variant="secondary" onClick={() => inputRef.current?.click()}>
+          {phase === "error" ? "Choose another file" : "Browse Files"}
         </Button>
       </div>
-    </div>
+    </>
   );
 }
 
-/** Upload flow: drop zone, then a stepped progress readout, then a success panel. */
 export function UploadDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
   return (
     <Modal
       open={open}
       onClose={onClose}
-      title="Upload documents"
+      title="Upload document"
       subtitle="Add knowledge for your assistant to use."
     >
       <UploadFlow onClose={onClose} />

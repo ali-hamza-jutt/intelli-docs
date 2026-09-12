@@ -1,10 +1,11 @@
 import Link from "next/link";
 import { StatusBadge } from "@/components/ui/Badge";
 import { DocumentTile } from "./DocumentTile";
-import type { Doc } from "@/lib/data";
+import { formatDate, fileTypeOf } from "@/lib/format";
+import type { DocumentResponse } from "@/lib/api/model";
 
 /** Compact document row used inside the dashboard's "Recent documents" card. */
-export function DocumentListItem({ doc }: { doc: Doc }) {
+export function DocumentListItem({ doc }: { doc: DocumentResponse }) {
   return (
     <Link
       href={`/documents/${doc.id}`}
@@ -12,9 +13,9 @@ export function DocumentListItem({ doc }: { doc: Doc }) {
     >
       <DocumentTile status={doc.status} className="size-8 text-md" />
       <span className="min-w-0 flex-1">
-        <span className="block truncate text-body font-medium">{doc.name}</span>
+        <span className="block truncate text-body font-medium">{doc.fileName}</span>
         <span className="block text-tiny text-subtle">
-          {doc.type} · {doc.date}
+          {fileTypeOf(doc.originalFileName)} · {formatDate(doc.createdAt)}
         </span>
       </span>
       <StatusBadge status={doc.status} />

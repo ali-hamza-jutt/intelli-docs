@@ -10,6 +10,7 @@ builder.Services.AddOpenApi();
 
 builder.Services.AddPersistence(builder.Configuration);
 builder.Services.AddApplicationServices();
+builder.Services.AddFileStorage(builder.Configuration);
 builder.Services.AddTokenAuthentication(builder.Configuration);
 builder.Services.AddSpaCors(builder.Configuration);
 
@@ -17,6 +18,8 @@ builder.Services.AddSpaCors(builder.Configuration);
 // text/plain and text/json duplicates of every response type.
 builder.Services.AddControllers(options =>
     options.Filters.Add(new ProducesAttribute("application/json")));
+
+builder.Services.AddConsistentValidationErrors();
 
 var app = builder.Build();
 

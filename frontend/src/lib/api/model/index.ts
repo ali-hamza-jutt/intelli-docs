@@ -7,10 +7,16 @@
 
 export * from './authResponse';
 export * from './changePasswordRequest';
+export * from './confirmUploadRequest';
 export * from './createDocumentRequest';
 export * from './documentResponse';
+export * from './documentStatusResponse';
+export * from './iFormFile';
 export * from './loginRequest';
+export * from './postApiDocumentsUploadBody';
 export * from './problemDetails';
 export * from './registerRequest';
 export * from './updateProfileRequest';
+export * from './uploadTicketRequest';
+export * from './uploadTicketResponse';
 export * from './userResponse';

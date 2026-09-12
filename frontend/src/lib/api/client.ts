@@ -107,6 +107,8 @@ export async function apiRequest<T>(config: RequestConfig): Promise<T> {
       )}`
     : "";
 
+  const isFormData = typeof FormData !== "undefined" && config.data instanceof FormData;
+
   const send = () => {
     const headers = new Headers(config.headers);
 
@@ -114,10 +116,20 @@ export async function apiRequest<T>(config: RequestConfig): Promise<T> {
       headers.set("Authorization", `Bearer ${accessToken}`);
     }
 
+    // The browser must set multipart Content-Type itself so it can append the boundary;
+    // the generated code sets a boundary-less value that would make the body unparseable.
+    if (isFormData) {
+      headers.delete("Content-Type");
+    }
+
     return fetch(`${API_BASE_URL}${config.url}${query}`, {
       method: config.method.toUpperCase(),
       headers,
-      body: config.data === undefined ? undefined : JSON.stringify(config.data),
+      body: config.data === undefined
+        ? undefined
+        : isFormData
+          ? (config.data as FormData)
+          : JSON.stringify(config.data),
       // Sends the refresh cookie on auth calls; harmless elsewhere.
       credentials: "include",
       signal: config.signal,

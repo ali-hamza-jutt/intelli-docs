@@ -4,19 +4,20 @@ import Link from "next/link";
 import { StatusBadge } from "@/components/ui/Badge";
 import { IconButton, IconButtonLink } from "@/components/ui/IconButton";
 import { Icon } from "@/components/ui/Icon";
-import { Progress } from "@/components/ui/Progress";
 import { DocumentTile } from "./DocumentTile";
-import type { Doc } from "@/lib/data";
+import { formatBytes, formatDate, fileTypeOf } from "@/lib/format";
+import { API_BASE_URL } from "@/lib/api/client";
+import type { DocumentResponse } from "@/lib/api/model";
 
-/** One row of the documents table, including its processing and error sub-rows. */
+/** One row of the documents table, including its error sub-row. */
 export function DocumentRow({
   doc,
   onDelete,
-  onRetry,
+  isDeleting,
 }: {
-  doc: Doc;
-  onDelete: (doc: Doc) => void;
-  onRetry: (doc: Doc) => void;
+  doc: DocumentResponse;
+  onDelete: (doc: DocumentResponse) => void;
+  isDeleting?: boolean;
 }) {
   return (
     <div className="border-b border-line-soft last:border-b-0">
@@ -28,10 +29,10 @@ export function DocumentRow({
               href={`/documents/${doc.id}`}
               className="block truncate text-body font-semibold hover:text-brand"
             >
-              {doc.name}
+              {doc.fileName}
             </Link>
             <span className="block text-tiny text-subtle">
-              {doc.type} · {doc.size}
+              {fileTypeOf(doc.originalFileName)} · {formatBytes(doc.fileSize)}
             </span>
           </span>
         </span>
@@ -39,41 +40,37 @@ export function DocumentRow({
         <span className="hidden w-[110px] sm:block">
           <StatusBadge status={doc.status} />
         </span>
-        <span className="hidden w-[90px] text-small text-muted lg:block">
-          {doc.chunks ? `${doc.chunks} chunks` : "—"}
+        <span className="hidden w-[110px] text-small text-muted lg:block">
+          {formatDate(doc.createdAt)}
         </span>
-        <span className="hidden w-[110px] text-small text-muted lg:block">{doc.date}</span>
 
         <span className="flex w-[104px] justify-end gap-1">
           <IconButtonLink href={`/documents/${doc.id}`} icon="external" label="Open document" size="sm" />
-          <IconButtonLink href="/chat" icon="message" label="Chat with document" size="sm" />
-          <IconButton icon="trash" label="Delete document" size="sm" tone="danger" onClick={() => onDelete(doc)} />
+          <a
+            href={`${API_BASE_URL}/api/Documents/${doc.id}/download`}
+            className="icon-btn icon-btn-sm icon-btn-plain"
+            aria-label="Download document"
+            title="Download"
+          >
+            <Icon name="download" />
+          </a>
+          <IconButton
+            icon="trash"
+            label="Delete document"
+            size="sm"
+            tone="danger"
+            disabled={isDeleting}
+            onClick={() => onDelete(doc)}
+          />
         </span>
       </div>
 
-      {doc.status === "processing" && (
-        <div className="pr-[18px] pb-3.5 pl-16">
-          <Progress value={68} className="max-w-[320px]" />
-          <p className="mt-1.5 text-tiny text-muted">Generating embeddings — 68%</p>
-        </div>
-      )}
-
-      {doc.status === "failed" && (
+      {doc.status === "Failed" && (
         <div className="alert-danger mx-[18px] mb-3.5 ml-16">
           <Icon name="alert" className="text-md text-danger" />
-          <p className="alert-danger-text">Something went wrong while processing this document.</p>
-          <button
-            onClick={() => onRetry(doc)}
-            className="btn btn-sm rounded-control border border-danger-border bg-surface text-danger hover:bg-danger-softer"
-          >
-            Retry
-          </button>
-          <button
-            onClick={() => onDelete(doc)}
-            className="btn btn-sm rounded-control text-danger-strong hover:bg-danger-softer"
-          >
-            Delete
-          </button>
+          <p className="alert-danger-text">
+            {doc.errorMessage ?? "Something went wrong while processing this document."}
+          </p>
         </div>
       )}
     </div>

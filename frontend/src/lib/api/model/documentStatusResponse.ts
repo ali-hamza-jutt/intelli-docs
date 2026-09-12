@@ -5,17 +5,11 @@
  * OpenAPI spec version: 1.0.0
  */
 
-export interface DocumentResponse {
+export interface DocumentStatusResponse {
   id: string;
-  fileName: string;
-  originalFileName: string;
-  contentType: string;
-  /** @pattern ^-?(?:0|[1-9]\d*)$ */
-  fileSize: number | string;
   status: string;
   /** @nullable */
   errorMessage?: string | null;
-  createdAt: string;
   /** @nullable */
   processedAt?: string | null;
 }

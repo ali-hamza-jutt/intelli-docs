@@ -1,23 +1,50 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Card, ListCard } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Icon } from "@/components/ui/Icon";
+import { Skeleton, SkeletonRows } from "@/components/ui/Skeleton";
+import { EmptyState } from "@/components/ui/EmptyState";
 import { DocumentListItem } from "@/components/documents/DocumentListItem";
-import {
-  CURRENT_USER,
-  DASHBOARD_STATS,
-  DOCUMENTS,
-  RECENT_CONVERSATIONS,
-  SUGGESTIONS,
-} from "@/lib/data";
+import { UploadDialog } from "@/components/documents/UploadDialog";
+import { useGetApiDocuments } from "@/lib/api/generated/documents/documents";
+import { isInProgress, shouldPoll } from "@/lib/documentStatus";
+import { useAuth } from "@/lib/auth/AuthProvider";
+import { RECENT_CONVERSATIONS, SUGGESTIONS } from "@/lib/data";
+
+const POLL_MS = 3000;
 
 export default function DashboardPage() {
   const [question, setQuestion] = useState("");
+  const [uploadOpen, setUploadOpen] = useState(false);
   const router = useRouter();
+  const { user } = useAuth();
+
+  const documents = useGetApiDocuments({
+    query: {
+      refetchInterval: (query) =>
+        query.state.data?.some(shouldPoll) ? POLL_MS : false,
+    },
+  });
+
+  // Counts are derived from the list rather than a separate endpoint — at this scale one
+  // request is cheaper than two, and the numbers can never disagree with the list below.
+  const stats = useMemo(() => {
+    const docs = documents.data ?? [];
+
+    return [
+      { label: "Documents", value: docs.length },
+      { label: "Processed", value: docs.filter((d) => d.status === "Completed").length },
+      { label: "Processing", value: docs.filter((d) => isInProgress(d.status)).length },
+      { label: "Failed", value: docs.filter((d) => d.status === "Failed").length },
+    ];
+  }, [documents.data]);
+
+  const recent = (documents.data ?? []).slice(0, 4);
+  const firstName = user?.name.split(" ")[0] ?? "there";
 
   const ask = (text: string) => {
     if (!text.trim()) return;
@@ -26,10 +53,8 @@ export default function DashboardPage() {
 
   return (
     <div className="page">
-      <h2 className="m-0 text-3xl font-bold tracking-[-0.025em]">
-        Good morning, {CURRENT_USER.name.split(" ")[0]}
-      </h2>
-      <p className="mt-1.5 mb-6.5 text-lead text-muted">
+      <h2 className="m-0 text-3xl font-bold tracking-[-0.025em]">Good morning, {firstName}</h2>
+      <p className="mt-1.5 mb-6 text-lead text-muted">
         Here&apos;s what&apos;s happening with your knowledge base.
       </p>
 
@@ -74,10 +99,16 @@ export default function DashboardPage() {
 
       {/* Stats */}
       <div className="grid-fit-sm mt-5">
-        {DASHBOARD_STATS.map((stat) => (
+        {stats.map((stat) => (
           <div key={stat.label} className="card rounded-xl px-[18px] py-4">
             <p className="m-0 text-caption font-medium text-muted">{stat.label}</p>
-            <p className="mt-1.5 text-3xl font-bold tracking-[-0.02em]">{stat.value}</p>
+            {documents.isPending ? (
+              <Skeleton className="mt-2.5 h-6 w-16" />
+            ) : (
+              <p className="mt-1.5 text-3xl font-bold tracking-[-0.02em] tabular-nums">
+                {stat.value}
+              </p>
+            )}
           </div>
         ))}
       </div>
@@ -92,7 +123,22 @@ export default function DashboardPage() {
             </Link>
           }
         >
-          {DOCUMENTS.slice(0, 4).map((doc) => (
+          {documents.isPending && (
+            <div className="p-[18px]">
+              <SkeletonRows count={4} />
+            </div>
+          )}
+
+          {documents.isSuccess && recent.length === 0 && (
+            <EmptyState
+              icon="fileText"
+              title="No documents yet"
+              body="Upload a PDF to start building your knowledge base."
+              action={<Button onClick={() => setUploadOpen(true)}>Upload Document</Button>}
+            />
+          )}
+
+          {recent.map((doc) => (
             <DocumentListItem key={doc.id} doc={doc} />
           ))}
         </ListCard>
@@ -118,6 +164,8 @@ export default function DashboardPage() {
           ))}
         </ListCard>
       </div>
+
+      <UploadDialog open={uploadOpen} onClose={() => setUploadOpen(false)} />
     </div>
   );
 }

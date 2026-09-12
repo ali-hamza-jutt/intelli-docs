@@ -1,49 +1,10 @@
 import type { IconName } from "@/components/ui/Icon";
 
 /* ============================================================================
-   Dummy data. Everything the UI renders comes from here, so swapping in the
-   real API later means replacing this module — not touching components.
+   Placeholder data for the parts of the UI that have no API yet: chat,
+   conversations, collections and settings preferences. Documents and the
+   signed-in user now come from the backend.
    ========================================================================= */
-
-export type DocumentStatus = "ready" | "processing" | "failed";
-
-export type Doc = {
-  id: string;
-  name: string;
-  type: "PDF" | "DOCX" | "TXT";
-  size: string;
-  status: DocumentStatus;
-  chunks: number;
-  date: string;
-};
-
-export const CURRENT_USER = {
-  name: "Hamza Ali",
-  email: "hamza@northstar.co",
-  initials: "HA",
-};
-
-export const DOCUMENTS: Doc[] = [
-  { id: "handbook", name: "Employee Handbook.pdf", type: "PDF", size: "2.4 MB", status: "ready", chunks: 124, date: "Aug 31, 2026" },
-  { id: "leave", name: "Leave Policy 2026.pdf", type: "PDF", size: "840 KB", status: "ready", chunks: 48, date: "Aug 28, 2026" },
-  { id: "benefits", name: "Benefits Overview.docx", type: "DOCX", size: "1.1 MB", status: "ready", chunks: 62, date: "Aug 24, 2026" },
-  { id: "remote", name: "Remote Work Guidelines.pdf", type: "PDF", size: "620 KB", status: "processing", chunks: 0, date: "Sep 1, 2026" },
-  { id: "conduct", name: "Code of Conduct.txt", type: "TXT", size: "96 KB", status: "ready", chunks: 31, date: "Aug 12, 2026" },
-  { id: "payroll", name: "Payroll Schedule.pdf", type: "PDF", size: "310 KB", status: "failed", chunks: 0, date: "Sep 2, 2026" },
-];
-
-export const STATUS_LABELS: Record<DocumentStatus, string> = {
-  ready: "Ready",
-  processing: "Processing",
-  failed: "Failed",
-};
-
-export const DASHBOARD_STATS = [
-  { label: "Documents", value: "24" },
-  { label: "Conversations", value: "128" },
-  { label: "Knowledge Chunks", value: "4,820" },
-  { label: "Questions Asked", value: "356" },
-];
 
 export const RECENT_CONVERSATIONS = [
   { id: "leave", title: "Employee leave policy", when: "2h ago" },
