@@ -30,6 +30,12 @@ public interface IDocumentService
     /// <summary>Removes the database row and the stored file together.</summary>
     Task<bool> DeleteAsync(Guid id, CancellationToken cancellationToken = default);
 
+    /// <summary>Extracted text for a document, scoped to the owner. Null until processing runs.</summary>
+    Task<DocumentTextResponse?> GetTextAsync(Guid id);
+
+    /// <summary>Re-runs extraction for a document, discarding any previous result.</summary>
+    Task<bool> ReprocessAsync(Guid id, CancellationToken cancellationToken = default);
+
     /// <summary>Opens the stored file for download, scoped to the owner.</summary>
     Task<DocumentDownload?> DownloadAsync(Guid id, CancellationToken cancellationToken = default);
 }

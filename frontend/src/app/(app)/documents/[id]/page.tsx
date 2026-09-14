@@ -14,12 +14,16 @@ import { Skeleton } from "@/components/ui/Skeleton";
 import {
   useGetApiDocumentsId,
   useDeleteApiDocumentsId,
+  usePostApiDocumentsIdReprocess,
   getGetApiDocumentsQueryKey,
+  getGetApiDocumentsIdQueryKey,
+  getGetApiDocumentsIdTextQueryKey,
 } from "@/lib/api/generated/documents/documents";
 import { API_BASE_URL, ApiError } from "@/lib/api/client";
 import { formatBytes, formatDate, fileTypeOf } from "@/lib/format";
-import { isInProgress, presentStatus, shouldPoll } from "@/lib/documentStatus";
+import { presentStatus, shouldPoll } from "@/lib/documentStatus";
 import { DOCUMENT_ACTIONS } from "@/lib/data";
+import { ExtractedTextCard } from "@/components/documents/ExtractedTextCard";
 import { useToast } from "@/components/ui/Toast";
 
 const POLL_MS = 3000;
@@ -35,6 +39,22 @@ export default function DocumentDetailPage({ params }: { params: Promise<{ id: s
       // Keeps the status chip live while the document is still being ingested.
       refetchInterval: (query) =>
         query.state.data && shouldPoll(query.state.data) ? POLL_MS : false,
+    },
+  });
+
+  const reprocess = usePostApiDocumentsIdReprocess({
+    mutation: {
+      onSuccess: () => {
+        toast("Reprocessing finished");
+
+        // The document, its extracted text and the list all reflect the old run. Keys come from
+        // the generated helpers so they cannot drift from what the hooks actually registered.
+        queryClient.invalidateQueries({ queryKey: getGetApiDocumentsIdQueryKey(id) });
+        queryClient.invalidateQueries({ queryKey: getGetApiDocumentsIdTextQueryKey(id) });
+        queryClient.invalidateQueries({ queryKey: getGetApiDocumentsQueryKey() });
+      },
+      onError: (error) =>
+        toast(error instanceof ApiError ? error.message : "Could not reprocess", "warn"),
     },
   });
 
@@ -165,6 +185,14 @@ export default function DocumentDetailPage({ params }: { params: Promise<{ id: s
           <p className="alert-danger-text">
             {doc.errorMessage ?? "Processing failed for this document."}
           </p>
+          <Button
+            variant="secondary"
+            size="sm"
+            disabled={reprocess.isPending}
+            onClick={() => reprocess.mutate({ id: doc.id })}
+          >
+            {reprocess.isPending ? "Retrying…" : "Try again"}
+          </Button>
         </div>
       )}
 
@@ -182,17 +210,7 @@ export default function DocumentDetailPage({ params }: { params: Promise<{ id: s
             </div>
           </Card>
 
-          <Card>
-            <h3 className="mb-3 eyebrow">Extracted text</h3>
-            <div className="rounded-control bg-canvas px-4 py-6 text-center">
-              <Icon name="sparkles" className="mx-auto text-xl text-subtle" />
-              <p className="mt-2 mb-0 text-body text-muted">
-                {isInProgress(doc.status)
-                  ? "Text will appear here once the document has been processed."
-                  : "Text extraction arrives in the next module."}
-              </p>
-            </div>
-          </Card>
+          <ExtractedTextCard documentId={doc.id} status={doc.status} />
         </div>
 
         <Card>

@@ -27,6 +27,7 @@ import type {
   ConfirmUploadRequest,
   DocumentResponse,
   DocumentStatusResponse,
+  DocumentTextResponse,
   PostApiDocumentsUploadBody,
   ProblemDetails,
   UploadTicketRequest,
@@ -557,7 +558,152 @@ export function useGetApiDocumentsIdStatus<TData = Awaited<ReturnType<typeof get
 
 
 
-export const getApiDocumentsIdDownload = (
+export const getApiDocumentsIdText = (
+    id: string,
+ signal?: AbortSignal
+) => {
+
+
+      return apiRequest<DocumentTextResponse>(
+      {url: `/api/Documents/${id}/text`, method: 'GET', signal
+    },
+      );
+    }
+
+
+
+
+export const getGetApiDocumentsIdTextQueryKey = (id: string,) => {
+    return [
+    `/api/Documents/${id}/text`
+    ] as const;
+    }
+
+
+export const getGetApiDocumentsIdTextQueryOptions = <TData = Awaited<ReturnType<typeof getApiDocumentsIdText>>, TError = ProblemDetails>(id: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getApiDocumentsIdText>>, TError, TData>>, }
+) => {
+
+const {query: queryOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetApiDocumentsIdTextQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getApiDocumentsIdText>>> = ({ signal }) => getApiDocumentsIdText(id, signal);
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: id !== null && id !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getApiDocumentsIdText>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetApiDocumentsIdTextQueryResult = NonNullable<Awaited<ReturnType<typeof getApiDocumentsIdText>>>
+export type GetApiDocumentsIdTextQueryError = ProblemDetails
+
+
+export function useGetApiDocumentsIdText<TData = Awaited<ReturnType<typeof getApiDocumentsIdText>>, TError = ProblemDetails>(
+ id: string, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getApiDocumentsIdText>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getApiDocumentsIdText>>,
+          TError,
+          Awaited<ReturnType<typeof getApiDocumentsIdText>>
+        > , 'initialData'
+      >, }
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetApiDocumentsIdText<TData = Awaited<ReturnType<typeof getApiDocumentsIdText>>, TError = ProblemDetails>(
+ id: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getApiDocumentsIdText>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getApiDocumentsIdText>>,
+          TError,
+          Awaited<ReturnType<typeof getApiDocumentsIdText>>
+        > , 'initialData'
+      >, }
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetApiDocumentsIdText<TData = Awaited<ReturnType<typeof getApiDocumentsIdText>>, TError = ProblemDetails>(
+ id: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getApiDocumentsIdText>>, TError, TData>>, }
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+
+export function useGetApiDocumentsIdText<TData = Awaited<ReturnType<typeof getApiDocumentsIdText>>, TError = ProblemDetails>(
+ id: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getApiDocumentsIdText>>, TError, TData>>, }
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetApiDocumentsIdTextQueryOptions(id,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+export const postApiDocumentsIdReprocess = (
+    id: string,
+ signal?: AbortSignal
+) => {
+
+
+      return apiRequest<DocumentResponse>(
+      {url: `/api/Documents/${id}/reprocess`, method: 'POST', signal
+    },
+      );
+    }
+
+
+
+
+export const getPostApiDocumentsIdReprocessMutationKey = () => ['postApiDocumentsIdReprocess'] as const;
+
+export const getPostApiDocumentsIdReprocessMutationOptions = <TError = ProblemDetails,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof postApiDocumentsIdReprocess>>, TError,PostApiDocumentsIdReprocessMutationVariables, TContext>, }
+): UseMutationOptions<Awaited<ReturnType<typeof postApiDocumentsIdReprocess>>, TError,PostApiDocumentsIdReprocessMutationVariables, TContext> => {
+
+const mutationKey = getPostApiDocumentsIdReprocessMutationKey();
+const {mutation: mutationOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof postApiDocumentsIdReprocess>>, PostApiDocumentsIdReprocessMutationVariables> = (props) => {
+          const {id} = props ?? {};
+
+          return  postApiDocumentsIdReprocess(id,)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type PostApiDocumentsIdReprocessMutationResult = NonNullable<Awaited<ReturnType<typeof postApiDocumentsIdReprocess>>>
+
+    export type PostApiDocumentsIdReprocessMutationError = ProblemDetails
+    export type PostApiDocumentsIdReprocessMutationVariables = {id: string}
+
+    export const usePostApiDocumentsIdReprocess = <TError = ProblemDetails,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof postApiDocumentsIdReprocess>>, TError,PostApiDocumentsIdReprocessMutationVariables, TContext>, }
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof postApiDocumentsIdReprocess>>,
+        TError,
+        PostApiDocumentsIdReprocessMutationVariables,
+        TContext
+      > => {
+      return useMutation(getPostApiDocumentsIdReprocessMutationOptions(options), queryClient);
+    }
+    export const getApiDocumentsIdDownload = (
     id: string,
  signal?: AbortSignal
 ) => {

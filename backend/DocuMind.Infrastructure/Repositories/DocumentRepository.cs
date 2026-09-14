@@ -28,6 +28,12 @@ public class DocumentRepository : IDocumentRepository
             .ToListAsync();
     }
 
+    public async Task<Document?> GetByIdAsync(Guid id)
+    {
+        return await _context.Documents
+            .FirstOrDefaultAsync(d => d.Id == id);
+    }
+
     public async Task<Document?> GetByIdForUserAsync(Guid id, Guid userId)
     {
         // The owner predicate is part of the lookup, so there is no window in which a document

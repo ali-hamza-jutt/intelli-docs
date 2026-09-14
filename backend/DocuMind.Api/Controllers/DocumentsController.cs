@@ -123,6 +123,37 @@ public class DocumentsController : ControllerBase
         return Ok(status);
     }
 
+    /// <summary>Extracted text for the document detail preview.</summary>
+    [HttpGet("{id:guid}/text")]
+    [ProducesResponseType(typeof(DocumentTextResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<DocumentTextResponse>> GetText(Guid id)
+    {
+        var text = await _documentService.GetTextAsync(id);
+
+        // Also 404 while the document is still processing — there is genuinely nothing yet.
+        if (text is null)
+        {
+            return NotFound();
+        }
+
+        return Ok(text);
+    }
+
+    /// <summary>Re-runs extraction, discarding any previous result.</summary>
+    [HttpPost("{id:guid}/reprocess")]
+    [ProducesResponseType(typeof(DocumentResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<DocumentResponse>> Reprocess(Guid id, CancellationToken cancellationToken)
+    {
+        if (!await _documentService.ReprocessAsync(id, cancellationToken))
+        {
+            return NotFound();
+        }
+
+        return Ok(await _documentService.GetByIdAsync(id));
+    }
+
     [HttpGet("{id:guid}/download")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
