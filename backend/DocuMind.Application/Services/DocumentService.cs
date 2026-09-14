@@ -14,6 +14,8 @@ public class DocumentService : IDocumentService
 
     /// <summary>Null when the configured provider does not support direct upload.</summary>
     private readonly IDirectUploadService? _directUpload;
+    private readonly IDocumentTextRepository _texts;
+    private readonly IDocumentProcessor _processor;
     private readonly ICurrentUser _currentUser;
     private readonly ILogger<DocumentService> _logger;
 
@@ -23,8 +25,12 @@ public class DocumentService : IDocumentService
         IFileValidator validator,
         ICurrentUser currentUser,
         ILogger<DocumentService> logger,
+        IDocumentTextRepository texts,
+        IDocumentProcessor processor,
         IDirectUploadService? directUpload = null)
     {
+        _texts = texts;
+        _processor = processor;
         _repository = repository;
         _storage = storage;
         _validator = validator;
@@ -44,9 +50,11 @@ public class DocumentService : IDocumentService
 
         var stored = await _storage.SaveAsync(request.Content, request.FileName, cancellationToken);
 
+        Document document;
+
         try
         {
-            var document = Document.Upload(
+            document = Document.Upload(
                 userId,
                 originalFileName: Path.GetFileName(request.FileName),
                 storedFileName: stored.StoredFileName,
@@ -60,16 +68,23 @@ public class DocumentService : IDocumentService
             _logger.LogInformation(
                 "Document {DocumentId} uploaded by {UserId} ({SizeBytes} bytes)",
                 document.Id, userId, stored.SizeBytes);
-
-            return MapToResponse(document);
         }
         catch
         {
-            // The row never landed, so the file on disk would be unreachable. Remove it rather
-            // than leaving storage to accumulate orphans.
+            // The row never landed, so the file would be unreachable. Remove it rather than
+            // leaving storage to accumulate orphans.
             await _storage.DeleteAsync(stored.StorageKey, CancellationToken.None);
             throw;
         }
+
+        // Outside the catch on purpose: the row exists now, so a processing failure must not
+        // delete the file out from under it. Runs inline for the moment — module 4 moves this
+        // onto a background worker, and only the call site changes.
+        await _processor.ProcessAsync(document.Id, cancellationToken);
+
+        // Re-read rather than mapping the pre-processing snapshot: the processor shares this
+        // scope's DbContext, so the tracked entity already reflects Completed or Failed.
+        return MapToResponse(document);
     }
 
     public UploadTicketResponse CreateUploadTicket(UploadTicketRequest request)
@@ -159,6 +174,8 @@ public class DocumentService : IDocumentService
             "Document {DocumentId} registered from direct upload {PublicId} ({Bytes} bytes)",
             document.Id, verified.PublicId, verified.Bytes);
 
+        await _processor.ProcessAsync(document.Id, cancellationToken);
+
         return MapToResponse(document);
     }
 
@@ -218,6 +235,52 @@ public class DocumentService : IDocumentService
 
         _logger.LogInformation("Document {DocumentId} deleted", document.Id);
 
+        return true;
+    }
+
+    public async Task<DocumentTextResponse?> GetTextAsync(Guid id)
+    {
+        // Ownership first: the text is the document's content, so it needs the same protection.
+        var document = await LoadOwnedAsync(id);
+
+        if (document is null)
+        {
+            return null;
+        }
+
+        var text = await _texts.GetWithPagesAsync(id);
+
+        if (text is null)
+        {
+            return null;
+        }
+
+        return new DocumentTextResponse
+        {
+            DocumentId = document.Id,
+            PageCount = text.PageCount,
+            WordCount = text.WordCount,
+            CharacterCount = text.CharacterCount,
+            ExtractedAt = text.CreatedAt,
+            Pages = [.. text.Pages.Select(page => new DocumentPageResponse
+            {
+                PageNumber = page.PageNumber,
+                Text = page.Text,
+                WordCount = page.WordCount
+            })]
+        };
+    }
+
+    public async Task<bool> ReprocessAsync(Guid id, CancellationToken cancellationToken = default)
+    {
+        var document = await LoadOwnedAsync(id);
+
+        if (document is null)
+        {
+            return false;
+        }
+
+        await _processor.ProcessAsync(document.Id, cancellationToken);
         return true;
     }
 

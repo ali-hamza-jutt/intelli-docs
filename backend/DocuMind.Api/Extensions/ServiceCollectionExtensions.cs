@@ -2,6 +2,7 @@ using System.Text;
 using DocuMind.Api.Authentication;
 using DocuMind.Application.Interfaces;
 using DocuMind.Application.Services;
+using DocuMind.Infrastructure.Pdf;
 using DocuMind.Infrastructure.Persistence;
 using DocuMind.Infrastructure.Repositories;
 using DocuMind.Infrastructure.Security;
@@ -36,6 +37,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IUserRepository, UserRepository>();
         services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
         services.AddScoped<IDocumentRepository, DocumentRepository>();
+        services.AddScoped<IDocumentTextRepository, DocumentTextRepository>();
 
         return services;
     }
@@ -58,6 +60,10 @@ public static class ServiceCollectionExtensions
                     .ToArray());
 
         services.AddSingleton<IFileValidator, FileValidator>();
+
+        // Extraction and cleaning are stateless, so they are shared singletons.
+        services.AddSingleton<IPdfTextExtractor, PdfPigTextExtractor>();
+        services.AddSingleton<ITextCleaner, TextCleaner>();
 
         var provider = configuration[$"{StorageOptions.SectionName}:Provider"]
             ?? StorageProviders.Local;
@@ -106,6 +112,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IHealthService, HealthService>();
         services.AddScoped<IAuthService, AuthService>();
         services.AddScoped<IDocumentService, DocumentService>();
+        services.AddScoped<IDocumentProcessor, DocumentProcessor>();
 
         return services;
     }

@@ -16,6 +16,10 @@ public class DocuMindDbContext : DbContext
 
     public DbSet<Document> Documents => Set<Document>();
 
+    public DbSet<DocumentText> DocumentTexts => Set<DocumentText>();
+
+    public DbSet<DocumentPage> DocumentPages => Set<DocumentPage>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(DocuMindDbContext).Assembly);
