@@ -2,6 +2,7 @@ using System.Text;
 using DocuMind.Api.Authentication;
 using DocuMind.Application.Interfaces;
 using DocuMind.Application.Services;
+using DocuMind.Infrastructure.Ingestion;
 using DocuMind.Infrastructure.Pdf;
 using DocuMind.Infrastructure.Persistence;
 using DocuMind.Infrastructure.Repositories;
@@ -103,6 +104,20 @@ public static class ServiceCollectionExtensions
             // service, so the ticket endpoints report that cleanly rather than failing obscurely.
             services.AddSingleton<IFileStorageService, LocalFileStorageService>();
         }
+
+        return services;
+    }
+
+    /// <summary>
+    /// The ingestion queue and the worker that drains it. The queue is a singleton because the
+    /// worker and every request thread must share the same instance; the worker creates its own
+    /// scope per document so it can resolve the scoped processor and DbContext.
+    /// </summary>
+    public static IServiceCollection AddBackgroundIngestion(this IServiceCollection services)
+    {
+        services.AddSingleton<ChannelIngestionQueue>();
+        services.AddSingleton<IIngestionQueue>(sp => sp.GetRequiredService<ChannelIngestionQueue>());
+        services.AddHostedService<IngestionWorker>();
 
         return services;
     }

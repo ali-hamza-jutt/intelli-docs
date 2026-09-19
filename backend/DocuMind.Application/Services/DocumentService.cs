@@ -15,7 +15,7 @@ public class DocumentService : IDocumentService
     /// <summary>Null when the configured provider does not support direct upload.</summary>
     private readonly IDirectUploadService? _directUpload;
     private readonly IDocumentTextRepository _texts;
-    private readonly IDocumentProcessor _processor;
+    private readonly IIngestionQueue _queue;
     private readonly ICurrentUser _currentUser;
     private readonly ILogger<DocumentService> _logger;
 
@@ -26,11 +26,11 @@ public class DocumentService : IDocumentService
         ICurrentUser currentUser,
         ILogger<DocumentService> logger,
         IDocumentTextRepository texts,
-        IDocumentProcessor processor,
+        IIngestionQueue queue,
         IDirectUploadService? directUpload = null)
     {
         _texts = texts;
-        _processor = processor;
+        _queue = queue;
         _repository = repository;
         _storage = storage;
         _validator = validator;
@@ -77,13 +77,11 @@ public class DocumentService : IDocumentService
             throw;
         }
 
-        // Outside the catch on purpose: the row exists now, so a processing failure must not
-        // delete the file out from under it. Runs inline for the moment — module 4 moves this
-        // onto a background worker, and only the call site changes.
-        await _processor.ProcessAsync(document.Id, cancellationToken);
+        // Queued rather than run here: extraction and embedding take seconds to minutes, and the
+        // caller should not hold a connection open for it. The document is returned with status
+        // Uploaded and the client polls until it settles.
+        await _queue.EnqueueAsync(document.Id, cancellationToken);
 
-        // Re-read rather than mapping the pre-processing snapshot: the processor shares this
-        // scope's DbContext, so the tracked entity already reflects Completed or Failed.
         return MapToResponse(document);
     }
 
@@ -174,7 +172,7 @@ public class DocumentService : IDocumentService
             "Document {DocumentId} registered from direct upload {PublicId} ({Bytes} bytes)",
             document.Id, verified.PublicId, verified.Bytes);
 
-        await _processor.ProcessAsync(document.Id, cancellationToken);
+        await _queue.EnqueueAsync(document.Id, cancellationToken);
 
         return MapToResponse(document);
     }
@@ -280,7 +278,12 @@ public class DocumentService : IDocumentService
             return false;
         }
 
-        await _processor.ProcessAsync(document.Id, cancellationToken);
+        // Clear the previous failure and re-queue. The processor discards any earlier extraction
+        // before writing a new one, so a retry cannot leave two copies behind.
+        document.ResetForRetry();
+        await _repository.SaveChangesAsync();
+
+        await _queue.EnqueueAsync(document.Id, cancellationToken);
         return true;
     }
 
