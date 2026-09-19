@@ -32,11 +32,12 @@ public class DocumentsController : ControllerBase
     }
 
     /// <summary>
-    /// Registers a document after the browser finished uploading. The asset is verified with the
-    /// provider, so nothing here depends on the client telling the truth.
+    /// Registers a document after the browser finished uploading, then queues it for processing.
+    /// The asset is verified with the provider, so nothing here depends on the client telling the
+    /// truth.
     /// </summary>
     [HttpPost("confirm")]
-    [ProducesResponseType(typeof(DocumentResponse), StatusCodes.Status201Created)]
+    [ProducesResponseType(typeof(DocumentResponse), StatusCodes.Status202Accepted)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<DocumentResponse>> ConfirmUpload(
@@ -45,12 +46,15 @@ public class DocumentsController : ControllerBase
     {
         var document = await _documentService.ConfirmUploadAsync(request, cancellationToken);
 
-        return CreatedAtAction(nameof(GetById), new { id = document.Id }, document);
+        return AcceptedAtAction(nameof(GetById), new { id = document.Id }, document);
     }
 
-    /// <summary>Uploads a PDF and records it as Uploaded, ready for processing.</summary>
+    /// <summary>
+    /// Accepts a PDF and queues it for processing. Returns 202 rather than 201 because the
+    /// document is not usable yet — the client polls /status until it settles.
+    /// </summary>
     [HttpPost("upload")]
-    [ProducesResponseType(typeof(DocumentResponse), StatusCodes.Status201Created)]
+    [ProducesResponseType(typeof(DocumentResponse), StatusCodes.Status202Accepted)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<ActionResult<DocumentResponse>> Upload(
@@ -80,7 +84,7 @@ public class DocumentsController : ControllerBase
             },
             cancellationToken);
 
-        return CreatedAtAction(nameof(GetById), new { id = document.Id }, document);
+        return AcceptedAtAction(nameof(GetById), new { id = document.Id }, document);
     }
 
     [HttpGet]

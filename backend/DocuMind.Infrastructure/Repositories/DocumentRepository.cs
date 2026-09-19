@@ -34,6 +34,16 @@ public class DocumentRepository : IDocumentRepository
             .FirstOrDefaultAsync(d => d.Id == id);
     }
 
+    public async Task<List<Document>> GetByStatusAsync(IReadOnlyCollection<DocumentStatus> statuses)
+    {
+        // Oldest first, so a backlog is cleared in the order it arrived.
+        return await _context.Documents
+            .AsNoTracking()
+            .Where(d => statuses.Contains(d.Status))
+            .OrderBy(d => d.CreatedAt)
+            .ToListAsync();
+    }
+
     public async Task<Document?> GetByIdForUserAsync(Guid id, Guid userId)
     {
         // The owner predicate is part of the lookup, so there is no window in which a document

@@ -20,6 +20,12 @@ public interface IDocumentRepository
     /// </summary>
     Task<Document?> GetByIdAsync(Guid id);
 
+    /// <summary>
+    /// Documents in any of the given states, across all users. Used only by the ingestion worker
+    /// to recover work stranded by a restart.
+    /// </summary>
+    Task<List<Document>> GetByStatusAsync(IReadOnlyCollection<DocumentStatus> statuses);
+
     Task DeleteAsync(Document document);
 
     Task SaveChangesAsync();

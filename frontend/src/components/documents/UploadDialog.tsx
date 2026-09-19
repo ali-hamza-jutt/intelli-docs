@@ -1,7 +1,6 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { useRouter } from "next/navigation";
 import { Modal } from "@/components/ui/Modal";
 import { Button } from "@/components/ui/Button";
 import { Icon } from "@/components/ui/Icon";
@@ -12,6 +11,7 @@ import { formatBytes } from "@/lib/format";
 import { ApiError } from "@/lib/api/client";
 import { useUploadDocument } from "@/lib/api/useUploadDocument";
 import type { DocumentResponse } from "@/lib/api/model";
+import { UploadedPanel } from "./UploadedPanel";
 import { useToast } from "@/components/ui/Toast";
 
 const MAX_BYTES = 20 * 1024 * 1024;
@@ -32,7 +32,6 @@ function UploadFlow({ onClose }: { onClose: () => void }) {
 
   const inputRef = useRef<HTMLInputElement>(null);
   const { upload, cancel, progress } = useUploadDocument();
-  const router = useRouter();
   const toast = useToast();
 
   /** Cheap client-side checks. The API repeats them — this only saves a round trip. */
@@ -67,7 +66,7 @@ function UploadFlow({ onClose }: { onClose: () => void }) {
       const document = await upload(candidate);
       setUploaded(document);
       setPhase("done");
-      toast("Document uploaded");
+      toast("Upload complete — processing started");
     } catch (cause) {
       if (cause instanceof ApiError && cause.errorCode === "UPLOAD_CANCELLED") {
         setPhase("idle");
@@ -114,31 +113,7 @@ function UploadFlow({ onClose }: { onClose: () => void }) {
   }
 
   if (phase === "done" && uploaded) {
-    return (
-      <div className="px-2 py-6 text-center animate-fade-up">
-        <span className="inline-flex size-[46px] items-center justify-center rounded-full bg-success-soft text-[22px] text-success">
-          <Icon name="check" />
-        </span>
-        <p className="mt-4 mb-1 text-lg font-semibold">{uploaded.fileName} uploaded</p>
-        <p className="m-0 text-body text-muted">
-          {formatBytes(uploaded.fileSize)} · queued for processing.
-        </p>
-
-        <div className="mt-[22px] flex justify-center gap-2.5">
-          <Button variant="secondary" onClick={onClose}>
-            Done
-          </Button>
-          <Button
-            onClick={() => {
-              onClose();
-              router.push(`/documents/${uploaded.id}`);
-            }}
-          >
-            View document
-          </Button>
-        </div>
-      </div>
-    );
+    return <UploadedPanel document={uploaded} onClose={onClose} />;
   }
 
   return (
