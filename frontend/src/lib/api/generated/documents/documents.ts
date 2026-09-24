@@ -24,7 +24,9 @@ import type {
 } from '@tanstack/react-query';
 
 import type {
+  ChatAnswerResponse,
   ConfirmUploadRequest,
+  DocumentChatRequest,
   DocumentChunksResponse,
   DocumentResponse,
   DocumentStatusResponse,
@@ -740,7 +742,69 @@ export function useGetApiDocumentsIdChunks<TData = Awaited<ReturnType<typeof get
 
 
 
-export const postApiDocumentsIdReprocess = (
+export const postApiDocumentsIdChat = (
+    id: string,
+    documentChatRequest: DocumentChatRequest,
+ signal?: AbortSignal
+) => {
+
+
+      return apiRequest<ChatAnswerResponse>(
+      {url: `/api/Documents/${id}/chat`, method: 'POST',
+      headers: {'Content-Type': 'application/json', },
+      data: documentChatRequest, signal
+    },
+      );
+    }
+
+
+
+
+export const getPostApiDocumentsIdChatMutationKey = () => ['postApiDocumentsIdChat'] as const;
+
+export const getPostApiDocumentsIdChatMutationOptions = <TError = ProblemDetails | void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof postApiDocumentsIdChat>>, TError,PostApiDocumentsIdChatMutationVariables, TContext>, }
+): UseMutationOptions<Awaited<ReturnType<typeof postApiDocumentsIdChat>>, TError,PostApiDocumentsIdChatMutationVariables, TContext> => {
+
+const mutationKey = getPostApiDocumentsIdChatMutationKey();
+const {mutation: mutationOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof postApiDocumentsIdChat>>, PostApiDocumentsIdChatMutationVariables> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  postApiDocumentsIdChat(id,data,)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type PostApiDocumentsIdChatMutationResult = NonNullable<Awaited<ReturnType<typeof postApiDocumentsIdChat>>>
+    export type PostApiDocumentsIdChatMutationBody = DocumentChatRequest
+    export type PostApiDocumentsIdChatMutationError = ProblemDetails | void
+    export type PostApiDocumentsIdChatMutationVariables = {id: string;data: DocumentChatRequest}
+
+    export const usePostApiDocumentsIdChat = <TError = ProblemDetails | void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof postApiDocumentsIdChat>>, TError,PostApiDocumentsIdChatMutationVariables, TContext>, }
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof postApiDocumentsIdChat>>,
+        TError,
+        PostApiDocumentsIdChatMutationVariables,
+        TContext
+      > => {
+      return useMutation(getPostApiDocumentsIdChatMutationOptions(options), queryClient);
+    }
+    export const postApiDocumentsIdReprocess = (
     id: string,
  signal?: AbortSignal
 ) => {

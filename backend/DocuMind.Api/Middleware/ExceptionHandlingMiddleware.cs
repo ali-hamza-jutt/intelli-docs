@@ -36,15 +36,6 @@ public class ExceptionHandlingMiddleware
             _logger.LogInformation("Handled {ErrorCode}: {Message}", ex.ErrorCode, ex.Message);
             await WriteAsync(context, StatusFor(ex), ex.Message, ex.ErrorCode);
         }
-        catch (EmbeddingException ex)
-        {
-            // The AI provider sits outside this system, so its failures are reported as
-            // unavailability rather than as a fault here. The message was written for the user.
-            _logger.LogWarning(ex, "AI provider unavailable on {Method} {Path}",
-                context.Request.Method, context.Request.Path);
-
-            await WriteAsync(context, StatusCodes.Status503ServiceUnavailable, ex.Message, "AI_UNAVAILABLE");
-        }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Unhandled exception on {Method} {Path}", context.Request.Method, context.Request.Path);
@@ -59,6 +50,7 @@ public class ExceptionHandlingMiddleware
         UnauthorizedAppException => StatusCodes.Status401Unauthorized,
         NotFoundAppException => StatusCodes.Status404NotFound,
         ConflictAppException => StatusCodes.Status409Conflict,
+        AiUnavailableAppException => StatusCodes.Status503ServiceUnavailable,
         _ => StatusCodes.Status500InternalServerError
     };
 

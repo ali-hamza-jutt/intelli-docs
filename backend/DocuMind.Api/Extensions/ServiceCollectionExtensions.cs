@@ -146,6 +146,12 @@ public static class ServiceCollectionExtensions
             .ValidateOnStart();
 
         services.AddSingleton<IEmbeddingService, OpenAIEmbeddingService>();
+        services.AddSingleton<ILLMService, OpenAILLMService>();
+
+        // The prompt is pure text and the RAG service holds no state of its own; it is scoped only
+        // because the search it depends on reads through the request's DbContext.
+        services.AddSingleton<IPromptBuilder, GroundedPromptBuilder>();
+        services.AddScoped<IRagService, RagService>();
 
         // How much to retrieve and how close it must be. Same 'Rag' section as chunking: one
         // section for the retrieval pipeline, one options class per half of it.

@@ -32,9 +32,5 @@ public interface IEmbeddingService
         CancellationToken cancellationToken = default);
 }
 
-/// <summary>
-/// Raised when embeddings cannot be produced: the provider is unreachable, refuses the request, is
-/// rate limiting, or is not configured. The message is safe to show a user; the detail goes to the
-/// log.
-/// </summary>
-public class EmbeddingException(string message, Exception? inner = null) : Exception(message, inner);
+// A provider that is unreachable, rate limiting, or unconfigured throws AiUnavailableAppException,
+// which every AI service shares and the API turns into a 503.

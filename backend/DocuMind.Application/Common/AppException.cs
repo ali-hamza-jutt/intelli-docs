@@ -21,3 +21,10 @@ public sealed class NotFoundAppException(string message, string errorCode = "NOT
 /// <summary>409 — the request conflicts with existing state, e.g. a duplicate email.</summary>
 public sealed class ConflictAppException(string message, string errorCode = "CONFLICT")
     : AppException(message, errorCode);
+
+/// <summary>
+/// 503 — an AI provider this app depends on refused, timed out, or is not configured. Separate from
+/// a 500 because nothing here is broken: the same request may well succeed shortly.
+/// </summary>
+public sealed class AiUnavailableAppException(string message, string errorCode = "AI_UNAVAILABLE")
+    : AppException(message, errorCode);

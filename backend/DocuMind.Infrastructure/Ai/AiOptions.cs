@@ -31,6 +31,12 @@ public class AiOptions
     public int EmbeddingDimensions { get; set; } = 1536;
 
     /// <summary>
+    /// The model that writes answers. A small, cheap model is enough here: the facts come from the
+    /// retrieved passages, and the model's job is to read them and reply, not to know things.
+    /// </summary>
+    public string ChatModel { get; set; } = "gpt-4o-mini";
+
+    /// <summary>
     /// The provider credential. Set in user secrets, never in appsettings.json:
     /// <c>dotnet user-secrets set "AI:ApiKey" "&lt;key&gt;"</c>
     /// </summary>
@@ -62,6 +68,11 @@ public class AiOptions
         if (string.IsNullOrWhiteSpace(EmbeddingModel))
         {
             yield return "AI:EmbeddingModel must name an embedding model.";
+        }
+
+        if (string.IsNullOrWhiteSpace(ChatModel))
+        {
+            yield return "AI:ChatModel must name a chat model.";
         }
 
         // Not a range check: the column chunks are stored in is declared at exactly this width, so

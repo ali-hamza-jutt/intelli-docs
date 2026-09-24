@@ -1,3 +1,4 @@
+using DocuMind.Application.Common;
 using DocuMind.Application.Interfaces;
 using DocuMind.Domain.Entities;
 using Microsoft.Extensions.Logging;
@@ -136,7 +137,7 @@ public class DocumentProcessor : IDocumentProcessor
             // Everything else is reported to the user on the document itself.
             var message = ex switch
             {
-                NoTextLayerException or UnreadablePdfException or EmbeddingException => ex.Message,
+                NoTextLayerException or UnreadablePdfException or AiUnavailableAppException => ex.Message,
                 FileNotFoundException => "The stored file is no longer available.",
                 _ => "Something went wrong while processing this document."
             };

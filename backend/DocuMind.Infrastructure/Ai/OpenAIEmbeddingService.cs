@@ -1,5 +1,6 @@
 using System.ClientModel;
 using System.ClientModel.Primitives;
+using DocuMind.Application.Common;
 using DocuMind.Application.Interfaces;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -13,7 +14,7 @@ namespace DocuMind.Infrastructure.Ai;
 ///
 /// This is the first step in the pipeline that leaves the machine, so it is also the first that
 /// fails for reasons the code cannot prevent: rate limits, timeouts, a revoked key. Every one of
-/// those surfaces as <see cref="EmbeddingException"/> with a message safe to show the user, so the
+/// those surfaces as <see cref="AiUnavailableAppException"/> with a message safe to show the user, so the
 /// pipeline can mark the document Failed rather than leave it stuck in Processing.
 ///
 /// Two limits shape a request: how many inputs one call may carry, and how many tokens. Long
@@ -107,7 +108,7 @@ public class OpenAIEmbeddingService : IEmbeddingService
 
             if (response.Count != batch.Length)
             {
-                throw new EmbeddingException(
+                throw new AiUnavailableAppException(
                     $"The AI provider returned {response.Count} vectors for {batch.Length} inputs.");
             }
 
@@ -161,7 +162,7 @@ public class OpenAIEmbeddingService : IEmbeddingService
     {
         if (string.IsNullOrWhiteSpace(text))
         {
-            throw new EmbeddingException("Cannot embed empty text.");
+            throw new ValidationAppException("Cannot embed empty text.");
         }
 
         const int maxCharacters = MaxTokensPerInput * CharactersPerToken;
@@ -186,7 +187,7 @@ public class OpenAIEmbeddingService : IEmbeddingService
         // so it is caught here, where the message can name the setting that disagrees.
         if (vector.Length != Dimensions)
         {
-            throw new EmbeddingException(
+            throw new AiUnavailableAppException(
                 $"{Model} returned {vector.Length}-dimension vectors but AI:EmbeddingDimensions is {Dimensions}.");
         }
 
@@ -215,14 +216,14 @@ public class OpenAIEmbeddingService : IEmbeddingService
             _logger.LogError(
                 ex, "The AI provider rejected an embedding request with status {Status}", ex.Status);
 
-            throw new EmbeddingException(Describe(ex.Status), ex);
+            throw new AiUnavailableAppException(Describe(ex.Status));
         }
-        catch (Exception ex) when (ex is not (OperationCanceledException or EmbeddingException))
+        catch (Exception ex) when (ex is not (OperationCanceledException or AppException))
         {
             _logger.LogError(ex, "The AI provider could not be reached for embeddings");
 
-            throw new EmbeddingException(
-                "The AI service could not be reached. Try again shortly.", ex);
+            throw new AiUnavailableAppException(
+                "The AI service could not be reached. Try again shortly.");
         }
     }
 
@@ -241,7 +242,7 @@ public class OpenAIEmbeddingService : IEmbeddingService
             _logger.LogError(
                 "AI:ApiKey is not configured. Set it with: dotnet user-secrets set \"AI:ApiKey\" \"<key>\"");
 
-            throw new EmbeddingException("Search indexing is not configured on this server.");
+            throw new AiUnavailableAppException("Search indexing is not configured on this server.");
         }
 
         var clientOptions = new OpenAIClientOptions
