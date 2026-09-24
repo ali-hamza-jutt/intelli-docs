@@ -6,7 +6,7 @@ namespace DocuMind.Application.Services;
 
 /// <summary>
 /// The ingestion pipeline for one document: fetch the stored file, extract its text, clean it,
-/// split it into chunks, and record the result.
+/// split it into chunks, embed those chunks, and record the result.
 ///
 /// Content failures never propagate. A PDF that cannot be read is a normal outcome the user needs
 /// to see, so it becomes a Failed status with an actionable message rather than an exception that
@@ -21,6 +21,7 @@ public class DocumentProcessor : IDocumentProcessor
     private readonly ITextCleaner _cleaner;
     private readonly ITextChunker _chunker;
     private readonly IDocumentChunkRepository _chunks;
+    private readonly IEmbeddingService _embeddings;
     private readonly ILogger<DocumentProcessor> _logger;
 
     public DocumentProcessor(
@@ -31,6 +32,7 @@ public class DocumentProcessor : IDocumentProcessor
         IPdfTextExtractor extractor,
         ITextCleaner cleaner,
         ITextChunker chunker,
+        IEmbeddingService embeddings,
         ILogger<DocumentProcessor> logger)
     {
         _documents = documents;
@@ -40,6 +42,7 @@ public class DocumentProcessor : IDocumentProcessor
         _extractor = extractor;
         _cleaner = cleaner;
         _chunker = chunker;
+        _embeddings = embeddings;
         _logger = logger;
     }
 
@@ -94,6 +97,13 @@ public class DocumentProcessor : IDocumentProcessor
                     documentId, index, chunk.Text, chunk.StartPage, chunk.EndPage))
                 .ToList();
 
+            // Embedding happens before anything is saved, so a provider failure leaves the document
+            // Failed rather than Completed-but-unsearchable. The vectors are not stored yet: module
+            // 7 adds the pgvector column that holds them. They are produced here so the provider,
+            // the batching and the failure path are proven before retrieval depends on them.
+            var vectors = await _embeddings.EmbedBatchAsync(
+                [.. chunks.Select(chunk => chunk.Text)], cancellationToken);
+
             await _texts.AddAsync(documentText);
             await _chunks.AddRangeAsync(chunks);
 
@@ -105,8 +115,10 @@ public class DocumentProcessor : IDocumentProcessor
             await _documents.SaveChangesAsync();
 
             _logger.LogInformation(
-                "Processed document {DocumentId}: {Pages} pages, {Words} words, {Chunks} chunks",
-                documentId, documentText.PageCount, documentText.WordCount, chunks.Count);
+                "Processed document {DocumentId}: {Pages} pages, {Words} words, {Chunks} chunks, "
+                    + "{Vectors} vectors of {Dimensions} dimensions",
+                documentId, documentText.PageCount, documentText.WordCount, chunks.Count,
+                vectors.Count, _embeddings.Dimensions);
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
@@ -120,7 +132,7 @@ public class DocumentProcessor : IDocumentProcessor
             // Everything else is reported to the user on the document itself.
             var message = ex switch
             {
-                NoTextLayerException or UnreadablePdfException => ex.Message,
+                NoTextLayerException or UnreadablePdfException or EmbeddingException => ex.Message,
                 FileNotFoundException => "The stored file is no longer available.",
                 _ => "Something went wrong while processing this document."
             };
