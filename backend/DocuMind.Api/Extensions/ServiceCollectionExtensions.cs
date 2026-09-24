@@ -7,6 +7,7 @@ using DocuMind.Infrastructure.Chunking;
 using DocuMind.Infrastructure.Ingestion;
 using DocuMind.Infrastructure.Pdf;
 using DocuMind.Infrastructure.Persistence;
+using DocuMind.Infrastructure.Search;
 using DocuMind.Infrastructure.Repositories;
 using DocuMind.Infrastructure.Security;
 using DocuMind.Infrastructure.Storage;
@@ -29,13 +30,19 @@ public static class ServiceCollectionExtensions
             options.UseNpgsql(
                 configuration.GetConnectionString("DefaultConnection"),
                 npgsql =>
+                {
                     // A pooled connection can be dropped by the server, a restart or a network
                     // blip. Without this, the first request after that fails outright instead of
                     // reconnecting.
                     npgsql.EnableRetryOnFailure(
                         maxRetryCount: 3,
                         maxRetryDelay: TimeSpan.FromSeconds(5),
-                        errorCodesToAdd: null)));
+                        errorCodesToAdd: null);
+
+                    // Teaches the driver the vector type, so embeddings can be written as
+                    // parameters instead of being pasted into SQL.
+                    npgsql.UseVector();
+                }));
 
         services.AddScoped<IUserRepository, UserRepository>();
         services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
@@ -139,6 +146,18 @@ public static class ServiceCollectionExtensions
             .ValidateOnStart();
 
         services.AddSingleton<IEmbeddingService, OpenAIEmbeddingService>();
+
+        // How much to retrieve and how close it must be. Same 'Rag' section as chunking: one
+        // section for the retrieval pipeline, one options class per half of it.
+        services.AddOptions<RetrievalOptions>()
+            .Bind(configuration.GetSection(RetrievalOptions.SectionName))
+            .Validate(
+                options => !options.Validate().Any(),
+                "Rag retrieval settings are invalid — see Rag:TopK and Rag:SimilarityThreshold.")
+            .ValidateOnStart();
+
+        // Scoped, because the search reads through the request's DbContext.
+        services.AddScoped<IVectorSearchService, VectorSearchService>();
 
         var ai = configuration.GetSection(AiOptions.SectionName).Get<AiOptions>() ?? new AiOptions();
 

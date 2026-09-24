@@ -98,11 +98,15 @@ public class DocumentProcessor : IDocumentProcessor
                 .ToList();
 
             // Embedding happens before anything is saved, so a provider failure leaves the document
-            // Failed rather than Completed-but-unsearchable. The vectors are not stored yet: module
-            // 7 adds the pgvector column that holds them. They are produced here so the provider,
-            // the batching and the failure path are proven before retrieval depends on them.
+            // Failed rather than Completed but unsearchable. The vectors come back in the order the
+            // texts went out, which is what makes pairing them by position safe.
             var vectors = await _embeddings.EmbedBatchAsync(
                 [.. chunks.Select(chunk => chunk.Text)], cancellationToken);
+
+            for (var index = 0; index < chunks.Count; index++)
+            {
+                chunks[index].AttachEmbedding(vectors[index]);
+            }
 
             await _texts.AddAsync(documentText);
             await _chunks.AddRangeAsync(chunks);

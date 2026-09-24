@@ -774,6 +774,68 @@
           }
         }
       }
+    },
+    "/api/search/semantic": {
+      "post": {
+        "tags": [
+          "Search"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SemanticSearchRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SemanticSearchRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/SemanticSearchRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SemanticSearchResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable"
+          }
+        }
+      }
     }
   },
   "components": {
@@ -1139,6 +1201,98 @@
           }
         }
       },
+      "SemanticMatchResponse": {
+        "required": [
+          "documentId",
+          "fileName",
+          "chunkIndex",
+          "pageNumber",
+          "endPageNumber",
+          "similarity",
+          "text"
+        ],
+        "type": "object",
+        "properties": {
+          "documentId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "fileName": {
+            "type": "string"
+          },
+          "chunkIndex": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "pageNumber": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "endPageNumber": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "similarity": {
+            "type": "number",
+            "format": "double"
+          },
+          "text": {
+            "type": "string"
+          }
+        }
+      },
+      "SemanticSearchRequest": {
+        "required": [
+          "query"
+        ],
+        "type": "object",
+        "properties": {
+          "query": {
+            "maxLength": 2000,
+            "minLength": 3,
+            "type": "string"
+          },
+          "topK": {
+            "maximum": 50,
+            "minimum": 1,
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          },
+          "documentId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          }
+        }
+      },
+      "SemanticSearchResponse": {
+        "required": [
+          "query",
+          "similarityThreshold",
+          "matches"
+        ],
+        "type": "object",
+        "properties": {
+          "query": {
+            "type": "string"
+          },
+          "similarityThreshold": {
+            "type": "number",
+            "format": "double"
+          },
+          "matches": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SemanticMatchResponse"
+            }
+          }
+        }
+      },
       "UpdateProfileRequest": {
         "required": [
           "name"
@@ -1247,6 +1401,9 @@
     },
     {
       "name": "Health"
+    },
+    {
+      "name": "Search"
     }
   ]
 }

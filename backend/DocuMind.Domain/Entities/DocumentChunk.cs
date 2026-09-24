@@ -9,6 +9,14 @@ namespace DocuMind.Domain.Entities;
 /// </summary>
 public class DocumentChunk
 {
+    /// <summary>
+    /// The width of every stored embedding, fixed because the database column is declared
+    /// <c>vector(1536)</c>. Configuration is checked against this at startup, so the number in
+    /// settings can never drift from the number in the schema — changing it means a migration and
+    /// re-embedding every chunk.
+    /// </summary>
+    public const int EmbeddingDimensions = 1536;
+
     private DocumentChunk() { }
 
     public Guid Id { get; private set; }
@@ -30,6 +38,15 @@ public class DocumentChunk
 
     /// <summary>Approximate — see <see cref="TextStatistics"/>. Used to budget how many chunks fit a prompt.</summary>
     public int TokenEstimate { get; private set; }
+
+    /// <summary>
+    /// The passage's meaning as coordinates. Null until the chunk has been embedded — a chunk with
+    /// no vector cannot be found by a search, which is why the pipeline embeds before it saves.
+    ///
+    /// Held as <c>float[]</c> so the Domain stays free of any database or provider type; the
+    /// persistence layer maps it to a pgvector column.
+    /// </summary>
+    public float[]? Embedding { get; private set; }
 
     public DateTime CreatedAt { get; private set; }
 
@@ -69,5 +86,21 @@ public class DocumentChunk
             TokenEstimate = TextStatistics.EstimateTokens(text),
             CreatedAt = DateTime.UtcNow
         };
+    }
+
+    /// <summary>
+    /// Attaches the vector this passage embeds to. Rejects the wrong width here rather than letting
+    /// the database do it, so the message names the chunk instead of the column.
+    /// </summary>
+    public void AttachEmbedding(float[] embedding)
+    {
+        if (embedding.Length != EmbeddingDimensions)
+        {
+            throw new ArgumentException(
+                $"A chunk embedding must have {EmbeddingDimensions} dimensions, not {embedding.Length}.",
+                nameof(embedding));
+        }
+
+        Embedding = embedding;
     }
 }
