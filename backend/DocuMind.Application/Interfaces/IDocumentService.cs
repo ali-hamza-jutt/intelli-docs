@@ -33,6 +33,9 @@ public interface IDocumentService
     /// <summary>Extracted text for a document, scoped to the owner. Null until processing runs.</summary>
     Task<DocumentTextResponse?> GetTextAsync(Guid id);
 
+    /// <summary>A page of the document's chunks in reading order, scoped to the owner.</summary>
+    Task<DocumentChunksResponse?> GetChunksAsync(Guid id, int offset, int limit);
+
     /// <summary>Re-runs extraction for a document, discarding any previous result.</summary>
     Task<bool> ReprocessAsync(Guid id, CancellationToken cancellationToken = default);
 

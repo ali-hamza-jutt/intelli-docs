@@ -9,10 +9,8 @@ export interface UploadTicketResponse {
   uploadUrl: string;
   apiKey: string;
   publicId: string;
-  /** @pattern ^-?(?:0|[1-9]\d*)$ */
-  timestamp: number | string;
+  timestamp: number;
   signature: string;
   resourceType: string;
-  /** @pattern ^-?(?:0|[1-9]\d*)$ */
-  maxFileSizeBytes: number | string;
+  maxFileSizeBytes: number;
 }

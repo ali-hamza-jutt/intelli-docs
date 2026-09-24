@@ -20,6 +20,8 @@ public class DocuMindDbContext : DbContext
 
     public DbSet<DocumentPage> DocumentPages => Set<DocumentPage>();
 
+    public DbSet<DocumentChunk> DocumentChunks => Set<DocumentChunk>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(DocuMindDbContext).Assembly);

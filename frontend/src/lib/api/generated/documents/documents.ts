@@ -25,9 +25,11 @@ import type {
 
 import type {
   ConfirmUploadRequest,
+  DocumentChunksResponse,
   DocumentResponse,
   DocumentStatusResponse,
   DocumentTextResponse,
+  GetApiDocumentsIdChunksParams,
   PostApiDocumentsUploadBody,
   ProblemDetails,
   UploadTicketRequest,
@@ -633,6 +635,100 @@ export function useGetApiDocumentsIdText<TData = Awaited<ReturnType<typeof getAp
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
   const queryOptions = getGetApiDocumentsIdTextQueryOptions(id,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+export const getApiDocumentsIdChunks = (
+    id: string,
+    params?: GetApiDocumentsIdChunksParams,
+ signal?: AbortSignal
+) => {
+
+
+      return apiRequest<DocumentChunksResponse>(
+      {url: `/api/Documents/${id}/chunks`, method: 'GET',
+        params, signal
+    },
+      );
+    }
+
+
+
+
+export const getGetApiDocumentsIdChunksQueryKey = (id: string,
+    params?: GetApiDocumentsIdChunksParams,) => {
+    return [
+    `/api/Documents/${id}/chunks`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetApiDocumentsIdChunksQueryOptions = <TData = Awaited<ReturnType<typeof getApiDocumentsIdChunks>>, TError = ProblemDetails>(id: string,
+    params?: GetApiDocumentsIdChunksParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getApiDocumentsIdChunks>>, TError, TData>>, }
+) => {
+
+const {query: queryOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetApiDocumentsIdChunksQueryKey(id,params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getApiDocumentsIdChunks>>> = ({ signal }) => getApiDocumentsIdChunks(id,params, signal);
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: id !== null && id !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getApiDocumentsIdChunks>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetApiDocumentsIdChunksQueryResult = NonNullable<Awaited<ReturnType<typeof getApiDocumentsIdChunks>>>
+export type GetApiDocumentsIdChunksQueryError = ProblemDetails
+
+
+export function useGetApiDocumentsIdChunks<TData = Awaited<ReturnType<typeof getApiDocumentsIdChunks>>, TError = ProblemDetails>(
+ id: string,
+    params: undefined |  GetApiDocumentsIdChunksParams, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getApiDocumentsIdChunks>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getApiDocumentsIdChunks>>,
+          TError,
+          Awaited<ReturnType<typeof getApiDocumentsIdChunks>>
+        > , 'initialData'
+      >, }
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetApiDocumentsIdChunks<TData = Awaited<ReturnType<typeof getApiDocumentsIdChunks>>, TError = ProblemDetails>(
+ id: string,
+    params?: GetApiDocumentsIdChunksParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getApiDocumentsIdChunks>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getApiDocumentsIdChunks>>,
+          TError,
+          Awaited<ReturnType<typeof getApiDocumentsIdChunks>>
+        > , 'initialData'
+      >, }
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetApiDocumentsIdChunks<TData = Awaited<ReturnType<typeof getApiDocumentsIdChunks>>, TError = ProblemDetails>(
+ id: string,
+    params?: GetApiDocumentsIdChunksParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getApiDocumentsIdChunks>>, TError, TData>>, }
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+
+export function useGetApiDocumentsIdChunks<TData = Awaited<ReturnType<typeof getApiDocumentsIdChunks>>, TError = ProblemDetails>(
+ id: string,
+    params?: GetApiDocumentsIdChunksParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getApiDocumentsIdChunks>>, TError, TData>>, }
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetApiDocumentsIdChunksQueryOptions(id,params,options)
 
   const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 

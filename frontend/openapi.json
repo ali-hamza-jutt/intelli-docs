@@ -632,6 +632,64 @@
         }
       }
     },
+    "/api/Documents/{id}/chunks": {
+      "get": {
+        "tags": [
+          "Documents"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 0
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 20
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DocumentChunksResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/Documents/{id}/reprocess": {
       "post": {
         "tags": [
@@ -776,6 +834,91 @@
           }
         }
       },
+      "DocumentChunkResponse": {
+        "required": [
+          "index",
+          "pageNumber",
+          "endPageNumber",
+          "characterCount",
+          "tokenEstimate",
+          "overlapWithPrevious",
+          "text"
+        ],
+        "type": "object",
+        "properties": {
+          "index": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "pageNumber": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "endPageNumber": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "characterCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "tokenEstimate": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "overlapWithPrevious": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "text": {
+            "type": "string"
+          }
+        }
+      },
+      "DocumentChunksResponse": {
+        "required": [
+          "documentId",
+          "totalCount",
+          "offset",
+          "limit",
+          "chunkSize",
+          "chunkOverlap",
+          "chunks"
+        ],
+        "type": "object",
+        "properties": {
+          "documentId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "totalCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "offset": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "limit": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "chunkSize": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "chunkOverlap": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "chunks": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DocumentChunkResponse"
+            }
+          }
+        }
+      },
       "DocumentPageResponse": {
         "required": [
           "pageNumber",
@@ -785,22 +928,14 @@
         "type": "object",
         "properties": {
           "pageNumber": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": "integer",
             "format": "int32"
           },
           "text": {
             "type": "string"
           },
           "wordCount": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": "integer",
             "format": "int32"
           }
         }
@@ -831,11 +966,7 @@
             "type": "string"
           },
           "fileSize": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": "integer",
             "format": "int64"
           },
           "status": {
@@ -905,27 +1036,15 @@
             "format": "uuid"
           },
           "pageCount": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": "integer",
             "format": "int32"
           },
           "wordCount": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": "integer",
             "format": "int32"
           },
           "characterCount": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": "integer",
             "format": "int32"
           },
           "extractedAt": {
@@ -975,11 +1094,9 @@
             ]
           },
           "status": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
             "type": [
               "null",
-              "integer",
-              "string"
+              "integer"
             ],
             "format": "int32"
           },
@@ -1049,11 +1166,7 @@
           "fileSize": {
             "maximum": 9223372036854776000,
             "minimum": 1,
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": "integer",
             "format": "int64"
           }
         }
@@ -1080,11 +1193,7 @@
             "type": "string"
           },
           "timestamp": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": "integer",
             "format": "int64"
           },
           "signature": {
@@ -1094,11 +1203,7 @@
             "type": "string"
           },
           "maxFileSizeBytes": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": "integer",
             "format": "int64"
           }
         }

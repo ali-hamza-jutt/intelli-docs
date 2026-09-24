@@ -14,7 +14,6 @@ export interface UploadTicketRequest {
   /**
      * @minimum 1
      * @maximum 9223372036854776000
-     * @pattern ^-?(?:0|[1-9]\d*)$
      */
-  fileSize?: number | string;
+  fileSize?: number;
 }

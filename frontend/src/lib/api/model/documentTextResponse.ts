@@ -8,12 +8,9 @@ import type { DocumentPageResponse } from './documentPageResponse';
 
 export interface DocumentTextResponse {
   documentId: string;
-  /** @pattern ^-?(?:0|[1-9]\d*)$ */
-  pageCount: number | string;
-  /** @pattern ^-?(?:0|[1-9]\d*)$ */
-  wordCount: number | string;
-  /** @pattern ^-?(?:0|[1-9]\d*)$ */
-  characterCount: number | string;
+  pageCount: number;
+  wordCount: number;
+  characterCount: number;
   extractedAt: string;
   pages: DocumentPageResponse[];
 }
