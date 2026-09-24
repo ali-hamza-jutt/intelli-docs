@@ -690,6 +690,89 @@
         }
       }
     },
+    "/api/Documents/{id}/chat": {
+      "post": {
+        "tags": [
+          "Documents"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DocumentChatRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DocumentChatRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/DocumentChatRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChatAnswerResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable"
+          }
+        }
+      }
+    },
     "/api/Documents/{id}/reprocess": {
       "post": {
         "tags": [
@@ -877,6 +960,88 @@
           }
         }
       },
+      "ChatAnswerResponse": {
+        "required": [
+          "question",
+          "answer",
+          "grounded",
+          "citations",
+          "inputTokens",
+          "outputTokens"
+        ],
+        "type": "object",
+        "properties": {
+          "question": {
+            "type": "string"
+          },
+          "answer": {
+            "type": "string"
+          },
+          "grounded": {
+            "type": "boolean"
+          },
+          "citations": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ChatCitationResponse"
+            }
+          },
+          "model": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "inputTokens": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "outputTokens": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
+      "ChatCitationResponse": {
+        "required": [
+          "marker",
+          "documentId",
+          "fileName",
+          "pageNumber",
+          "endPageNumber",
+          "text",
+          "similarity"
+        ],
+        "type": "object",
+        "properties": {
+          "marker": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "documentId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "fileName": {
+            "type": "string"
+          },
+          "pageNumber": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "endPageNumber": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "text": {
+            "type": "string"
+          },
+          "similarity": {
+            "type": "number",
+            "format": "double"
+          }
+        }
+      },
       "ConfirmUploadRequest": {
         "required": [
           "publicId",
@@ -892,6 +1057,19 @@
           "fileName": {
             "maxLength": 260,
             "minLength": 1,
+            "type": "string"
+          }
+        }
+      },
+      "DocumentChatRequest": {
+        "required": [
+          "question"
+        ],
+        "type": "object",
+        "properties": {
+          "question": {
+            "maxLength": 2000,
+            "minLength": 3,
             "type": "string"
           }
         }

@@ -22,9 +22,20 @@ public class RetrievalOptions
     /// </summary>
     public double SimilarityThreshold { get; set; } = 0.25;
 
+    /// <summary>
+    /// How many passages may go into a prompt. Every one costs tokens on every question, and a
+    /// model given too much context answers from the wrong part of it, so this stays small.
+    /// </summary>
+    public int MaxContextChunks { get; set; } = 5;
+
     /// <summary>Returns a message for each problem, or nothing if the settings are usable.</summary>
     public IEnumerable<string> Validate()
     {
+        if (MaxContextChunks is < 1 or > 20)
+        {
+            yield return $"Rag:MaxContextChunks must be between 1 and 20 (was {MaxContextChunks}).";
+        }
+
         if (TopK is < 1 or > 50)
         {
             yield return $"Rag:TopK must be between 1 and 50 (was {TopK}).";

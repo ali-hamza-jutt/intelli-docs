@@ -1,5 +1,7 @@
 using DocuMind.Application.DTOs.Documents;
+using DocuMind.Application.DTOs.Search;
 using DocuMind.Application.Interfaces;
+using DocuMind.Domain.Entities;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -11,11 +13,17 @@ namespace DocuMind.Api.Controllers;
 public class DocumentsController : ControllerBase
 {
     private readonly IDocumentService _documentService;
+    private readonly IRagService _ragService;
+    private readonly ICurrentUser _currentUser;
 
     public DocumentsController(
-        IDocumentService documentService)
+        IDocumentService documentService,
+        IRagService ragService,
+        ICurrentUser currentUser)
     {
         _documentService = documentService;
+        _ragService = ragService;
+        _currentUser = currentUser;
     }
 
     /// <summary>
@@ -168,6 +176,69 @@ public class DocumentsController : ControllerBase
         }
 
         return Ok(chunks);
+    }
+
+    /// <summary>
+    /// Answers a question about one document, from that document alone.
+    ///
+    /// The answer is written only from passages retrieved out of this document, and the citations
+    /// returned are built from those same passages — so every claim can be checked against a page
+    /// the user can open, and a question the document does not cover comes back as a refusal.
+    /// </summary>
+    [HttpPost("{id:guid}/chat")]
+    [ProducesResponseType(typeof(ChatAnswerResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    [ProducesResponseType(StatusCodes.Status503ServiceUnavailable)]
+    public async Task<ActionResult<ChatAnswerResponse>> Chat(
+        Guid id,
+        DocumentChatRequest request,
+        CancellationToken cancellationToken)
+    {
+        // Ownership first: another user's document is a 404 here exactly as it is everywhere else,
+        // before a question about it can reach retrieval.
+        var document = await _documentService.GetByIdAsync(id);
+
+        if (document is null)
+        {
+            return NotFound();
+        }
+
+        if (document.Status != nameof(DocumentStatus.Completed))
+        {
+            return Conflict(new
+            {
+                success = false,
+                message = document.Status == nameof(DocumentStatus.Failed)
+                    ? "This document could not be processed, so there is nothing to search yet. Try processing it again."
+                    : "This document is still being prepared. Try again once it has finished.",
+                errorCode = "DOCUMENT_NOT_READY"
+            });
+        }
+
+        var answer = await _ragService.AskAsync(
+            _currentUser.RequireUserId(), request.Question, id, cancellationToken);
+
+        return Ok(new ChatAnswerResponse
+        {
+            Question = answer.Question,
+            Answer = answer.Answer,
+            Grounded = answer.Grounded,
+            Model = answer.Model,
+            InputTokens = answer.InputTokens,
+            OutputTokens = answer.OutputTokens,
+            Citations = [.. answer.Citations.Select(citation => new ChatCitationResponse
+            {
+                Marker = citation.Marker,
+                DocumentId = citation.DocumentId,
+                FileName = citation.FileName,
+                PageNumber = citation.PageNumber,
+                EndPageNumber = citation.EndPageNumber,
+                Text = citation.Text,
+                Similarity = citation.Similarity
+            })]
+        });
     }
 
     /// <summary>Re-runs extraction, discarding any previous result.</summary>

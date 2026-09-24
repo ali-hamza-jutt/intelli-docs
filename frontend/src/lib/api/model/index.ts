@@ -7,7 +7,10 @@
 
 export * from './authResponse';
 export * from './changePasswordRequest';
+export * from './chatAnswerResponse';
+export * from './chatCitationResponse';
 export * from './confirmUploadRequest';
+export * from './documentChatRequest';
 export * from './documentChunkResponse';
 export * from './documentChunksResponse';
 export * from './documentPageResponse';

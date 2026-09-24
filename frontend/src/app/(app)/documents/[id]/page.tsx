@@ -170,7 +170,7 @@ export default function DocumentDetailPage({ params }: { params: Promise<{ id: s
                 ? undefined
                 : "Available once processing finishes"
             }
-            onClick={() => router.push("/chat")}
+            onClick={() => router.push(`/chat?documentId=${doc.id}`)}
           >
             Chat with document
           </Button>
@@ -244,7 +244,7 @@ export default function DocumentDetailPage({ params }: { params: Promise<{ id: s
               <button
                 key={action.label}
                 disabled={doc.status !== "Completed"}
-                onClick={() => router.push("/chat")}
+                onClick={() => router.push(`/chat?documentId=${doc.id}`)}
                 className="flex cursor-pointer items-center gap-2.5 rounded-control border border-line bg-surface px-3.5 py-3 text-left text-body font-medium transition-colors hover:border-brand-border hover:bg-brand-soft hover:text-brand disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:border-line disabled:hover:bg-surface disabled:hover:text-ink"
               >
                 <Icon name={action.icon} className="text-md text-subtle" />
