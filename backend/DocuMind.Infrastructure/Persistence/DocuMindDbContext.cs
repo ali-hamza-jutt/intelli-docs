@@ -24,6 +24,10 @@ public class DocuMindDbContext : DbContext
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
+        // Declared on the model so the migration installs it. Vector columns, the <=> operator and
+        // the HNSW index all come from this extension.
+        modelBuilder.HasPostgresExtension("vector");
+
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(DocuMindDbContext).Assembly);
 
         base.OnModelCreating(modelBuilder);

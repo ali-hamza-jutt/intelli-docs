@@ -1,3 +1,5 @@
+using DocuMind.Domain.Entities;
+
 namespace DocuMind.Infrastructure.Ai;
 
 /// <summary>The providers <see cref="AiOptions.Provider"/> accepts.</summary>
@@ -62,10 +64,14 @@ public class AiOptions
             yield return "AI:EmbeddingModel must name an embedding model.";
         }
 
-        if (EmbeddingDimensions is < 1 or > 4096)
+        // Not a range check: the column chunks are stored in is declared at exactly this width, so
+        // any other value would fail on the first insert. Caught at startup instead.
+        if (EmbeddingDimensions != DocumentChunk.EmbeddingDimensions)
         {
             yield return
-                $"AI:EmbeddingDimensions must be between 1 and 4096 (was {EmbeddingDimensions}).";
+                $"AI:EmbeddingDimensions must be {DocumentChunk.EmbeddingDimensions} to match the "
+                + $"vector column chunks are stored in (was {EmbeddingDimensions}). Changing it "
+                + "needs a migration and re-embedding every chunk.";
         }
 
         if (Endpoint.Length > 0 && !Uri.TryCreate(Endpoint, UriKind.Absolute, out _))
