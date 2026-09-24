@@ -144,6 +144,32 @@ public class DocumentsController : ControllerBase
         return Ok(text);
     }
 
+    /// <summary>
+    /// The document's chunks in reading order, paged. Mainly for inspecting how a document was
+    /// split — where the boundaries fell and how much each chunk repeats of the one before.
+    /// </summary>
+    [HttpGet("{id:guid}/chunks")]
+    [ProducesResponseType(typeof(DocumentChunksResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<DocumentChunksResponse>> GetChunks(
+        Guid id,
+        [FromQuery] int offset = 0,
+        [FromQuery] int limit = 20)
+    {
+        // A long document can produce thousands of chunks; never return them all at once.
+        offset = Math.Max(0, offset);
+        limit = Math.Clamp(limit, 1, 100);
+
+        var chunks = await _documentService.GetChunksAsync(id, offset, limit);
+
+        if (chunks is null)
+        {
+            return NotFound();
+        }
+
+        return Ok(chunks);
+    }
+
     /// <summary>Re-runs extraction, discarding any previous result.</summary>
     [HttpPost("{id:guid}/reprocess")]
     [ProducesResponseType(typeof(DocumentResponse), StatusCodes.Status200OK)]

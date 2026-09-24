@@ -6,7 +6,7 @@ namespace DocuMind.Application.Services;
 
 /// <summary>
 /// The ingestion pipeline for one document: fetch the stored file, extract its text, clean it,
-/// and record the result.
+/// split it into chunks, and record the result.
 ///
 /// Content failures never propagate. A PDF that cannot be read is a normal outcome the user needs
 /// to see, so it becomes a Failed status with an actionable message rather than an exception that
@@ -19,21 +19,27 @@ public class DocumentProcessor : IDocumentProcessor
     private readonly IFileStorageService _storage;
     private readonly IPdfTextExtractor _extractor;
     private readonly ITextCleaner _cleaner;
+    private readonly ITextChunker _chunker;
+    private readonly IDocumentChunkRepository _chunks;
     private readonly ILogger<DocumentProcessor> _logger;
 
     public DocumentProcessor(
         IDocumentRepository documents,
         IDocumentTextRepository texts,
+        IDocumentChunkRepository chunks,
         IFileStorageService storage,
         IPdfTextExtractor extractor,
         ITextCleaner cleaner,
+        ITextChunker chunker,
         ILogger<DocumentProcessor> logger)
     {
         _documents = documents;
         _texts = texts;
+        _chunks = chunks;
         _storage = storage;
         _extractor = extractor;
         _cleaner = cleaner;
+        _chunker = chunker;
         _logger = logger;
     }
 
@@ -54,7 +60,8 @@ public class DocumentProcessor : IDocumentProcessor
 
         try
         {
-            // A reprocess must not leave the previous extraction behind alongside the new one.
+            // A reprocess must not leave the previous run's text or chunks behind alongside the new.
+            await _chunks.RemoveForDocumentAsync(documentId);
             await _texts.RemoveForDocumentAsync(documentId);
 
             await using var content = await _storage.OpenAsync(document.FilePath, cancellationToken);
@@ -72,15 +79,34 @@ public class DocumentProcessor : IDocumentProcessor
                 documentId,
                 [.. cleanPages.Select(page => (page.Number, page.Text))]);
 
+            // Chunking runs on the cleaned pages rather than the combined text, so every chunk
+            // keeps the page numbers it came from.
+            var textChunks = _chunker.Chunk(cleanPages);
+
+            if (textChunks.Count == 0)
+            {
+                throw new NoTextLayerException(
+                    "No readable text remained after splitting this document into passages.");
+            }
+
+            var chunks = textChunks
+                .Select((chunk, index) => DocumentChunk.Create(
+                    documentId, index, chunk.Text, chunk.StartPage, chunk.EndPage))
+                .ToList();
+
             await _texts.AddAsync(documentText);
-            await _texts.SaveChangesAsync();
+            await _chunks.AddRangeAsync(chunks);
 
             document.MarkCompleted();
+
+            // One save for text, chunks and status together. Every repository shares this scope's
+            // DbContext, so they commit as a unit: a document can never read Completed while its
+            // chunks are missing.
             await _documents.SaveChangesAsync();
 
             _logger.LogInformation(
-                "Extracted {Pages} pages, {Words} words from document {DocumentId}",
-                documentText.PageCount, documentText.WordCount, documentId);
+                "Processed document {DocumentId}: {Pages} pages, {Words} words, {Chunks} chunks",
+                documentId, documentText.PageCount, documentText.WordCount, chunks.Count);
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {

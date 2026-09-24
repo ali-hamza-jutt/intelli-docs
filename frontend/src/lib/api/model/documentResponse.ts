@@ -10,8 +10,7 @@ export interface DocumentResponse {
   fileName: string;
   originalFileName: string;
   contentType: string;
-  /** @pattern ^-?(?:0|[1-9]\d*)$ */
-  fileSize: number | string;
+  fileSize: number;
   status: string;
   /** @nullable */
   errorMessage?: string | null;

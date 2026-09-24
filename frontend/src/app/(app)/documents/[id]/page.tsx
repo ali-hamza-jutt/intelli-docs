@@ -18,12 +18,15 @@ import {
   getGetApiDocumentsQueryKey,
   getGetApiDocumentsIdQueryKey,
   getGetApiDocumentsIdTextQueryKey,
+  getGetApiDocumentsIdChunksQueryKey,
+  useGetApiDocumentsIdChunks,
 } from "@/lib/api/generated/documents/documents";
 import { API_BASE_URL, ApiError } from "@/lib/api/client";
 import { formatBytes, formatDate, fileTypeOf } from "@/lib/format";
 import { presentStatus, shouldPoll } from "@/lib/documentStatus";
 import { DOCUMENT_ACTIONS } from "@/lib/data";
 import { ExtractedTextCard } from "@/components/documents/ExtractedTextCard";
+import { ChunksCard, CHUNK_PAGE_SIZE } from "@/components/documents/ChunksCard";
 import { useToast } from "@/components/ui/Toast";
 
 const POLL_MS = 3000;
@@ -51,6 +54,8 @@ export default function DocumentDetailPage({ params }: { params: Promise<{ id: s
         // the generated helpers so they cannot drift from what the hooks actually registered.
         queryClient.invalidateQueries({ queryKey: getGetApiDocumentsIdQueryKey(id) });
         queryClient.invalidateQueries({ queryKey: getGetApiDocumentsIdTextQueryKey(id) });
+        // No params: the bare key prefix-matches every page of chunks, not just the first.
+        queryClient.invalidateQueries({ queryKey: getGetApiDocumentsIdChunksQueryKey(id) });
         queryClient.invalidateQueries({ queryKey: getGetApiDocumentsQueryKey() });
       },
       onError: (error) =>
@@ -67,6 +72,14 @@ export default function DocumentDetailPage({ params }: { params: Promise<{ id: s
       },
     },
   });
+
+  // Same key as the first page ChunksCard requests, so TanStack Query serves both from one
+  // request. Declared before the early returns below — hooks must run on every render.
+  const chunkSummary = useGetApiDocumentsIdChunks(
+    id,
+    { offset: 0, limit: CHUNK_PAGE_SIZE },
+    { query: { enabled: document.data?.status === "Completed" } },
+  );
 
   if (document.isPending) {
     return (
@@ -122,6 +135,7 @@ export default function DocumentDetailPage({ params }: { params: Promise<{ id: s
     ["Uploaded", formatDate(doc.createdAt)],
     ["Status", status.label],
     ["Processed", doc.processedAt ? formatDate(doc.processedAt) : "—"],
+    ["Chunks", chunkSummary.data ? chunkSummary.data.totalCount.toLocaleString() : "—"],
   ];
 
   return (
@@ -211,6 +225,8 @@ export default function DocumentDetailPage({ params }: { params: Promise<{ id: s
           </Card>
 
           <ExtractedTextCard documentId={doc.id} status={doc.status} />
+
+          {doc.status === "Completed" && <ChunksCard documentId={doc.id} />}
         </div>
 
         <Card>

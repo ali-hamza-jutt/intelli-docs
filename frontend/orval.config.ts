@@ -11,6 +11,9 @@ export default defineConfig({
     output: {
       mode: "tags-split",
       target: "./src/lib/api/generated",
+      // Empty the output folders before generating. Otherwise a removed endpoint leaves its
+      // types behind, and code can keep compiling against an API that no longer exists.
+      clean: true,
       schemas: "./src/lib/api/model",
       client: "react-query",
       httpClient: "axios",

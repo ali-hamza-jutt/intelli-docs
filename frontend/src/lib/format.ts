@@ -1,19 +1,12 @@
-/**
- * Formatting helpers shared by the document views.
- *
- * `fileSize` arrives as `number | string` because .NET serialises Int64 that way in OpenAPI —
- * these helpers absorb that so components never deal with it.
- */
+/** Formatting helpers shared by the document views. */
 
 const UNITS = ["B", "KB", "MB", "GB"] as const;
 
-export function formatBytes(bytes: number | string): string {
-  const value = typeof bytes === "string" ? Number(bytes) : bytes;
+export function formatBytes(bytes: number): string {
+  if (!Number.isFinite(bytes) || bytes <= 0) return "0 B";
 
-  if (!Number.isFinite(value) || value <= 0) return "0 B";
-
-  const exponent = Math.min(Math.floor(Math.log(value) / Math.log(1024)), UNITS.length - 1);
-  const scaled = value / 1024 ** exponent;
+  const exponent = Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), UNITS.length - 1);
+  const scaled = bytes / 1024 ** exponent;
 
   // Whole numbers for bytes, one decimal above that.
   return `${exponent === 0 ? scaled : scaled.toFixed(1)} ${UNITS[exponent]}`;

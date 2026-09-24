@@ -15,6 +15,8 @@ public class DocumentService : IDocumentService
     /// <summary>Null when the configured provider does not support direct upload.</summary>
     private readonly IDirectUploadService? _directUpload;
     private readonly IDocumentTextRepository _texts;
+    private readonly IDocumentChunkRepository _chunks;
+    private readonly ITextChunker _chunker;
     private readonly IIngestionQueue _queue;
     private readonly ICurrentUser _currentUser;
     private readonly ILogger<DocumentService> _logger;
@@ -26,10 +28,14 @@ public class DocumentService : IDocumentService
         ICurrentUser currentUser,
         ILogger<DocumentService> logger,
         IDocumentTextRepository texts,
+        IDocumentChunkRepository chunks,
+        ITextChunker chunker,
         IIngestionQueue queue,
         IDirectUploadService? directUpload = null)
     {
         _texts = texts;
+        _chunks = chunks;
+        _chunker = chunker;
         _queue = queue;
         _repository = repository;
         _storage = storage;
@@ -269,6 +275,79 @@ public class DocumentService : IDocumentService
         };
     }
 
+    public async Task<DocumentChunksResponse?> GetChunksAsync(Guid id, int offset, int limit)
+    {
+        // Ownership first — chunks are the document's content and need the same protection.
+        var document = await LoadOwnedAsync(id);
+
+        if (document is null)
+        {
+            return null;
+        }
+
+        var total = await _chunks.CountForDocumentAsync(id);
+
+        // Fetch one chunk before the requested page, so the first chunk on it can still report
+        // how much it overlaps its predecessor. That extra chunk is not returned.
+        var fetchFrom = Math.Max(0, offset - 1);
+        var fetched = await _chunks.GetForDocumentAsync(id, fetchFrom, limit + (offset - fetchFrom));
+
+        var page = new List<DocumentChunkResponse>(limit);
+
+        for (var i = offset - fetchFrom; i < fetched.Count; i++)
+        {
+            var chunk = fetched[i];
+            var previous = i > 0 ? fetched[i - 1] : null;
+
+            page.Add(new DocumentChunkResponse
+            {
+                Index = chunk.ChunkIndex,
+                PageNumber = chunk.PageNumber,
+                EndPageNumber = chunk.EndPageNumber,
+                CharacterCount = chunk.CharacterCount,
+                TokenEstimate = chunk.TokenEstimate,
+                OverlapWithPrevious = previous is null ? 0 : MeasureOverlap(previous.Text, chunk.Text),
+                Text = chunk.Text
+            });
+        }
+
+        return new DocumentChunksResponse
+        {
+            DocumentId = document.Id,
+            TotalCount = total,
+            Offset = offset,
+            Limit = limit,
+            ChunkSize = _chunker.ChunkSize,
+            ChunkOverlap = _chunker.ChunkOverlap,
+            Chunks = page
+        };
+    }
+
+    /// <summary>
+    /// Length of the text a chunk repeats from the end of its predecessor.
+    ///
+    /// The chunker always follows a carried overlap with a paragraph separator, so a genuine
+    /// overlap is a prefix of <paramref name="current"/> that is also a suffix of
+    /// <paramref name="previous"/> and is immediately followed by whitespace. Requiring that last
+    /// part stops a coincidental one-character match being reported as overlap.
+    /// </summary>
+    private int MeasureOverlap(string previous, string current)
+    {
+        var longest = Math.Min(_chunker.ChunkOverlap, Math.Min(previous.Length, current.Length));
+
+        for (var length = longest; length > 0; length--)
+        {
+            var followedByBreak = length == current.Length || char.IsWhiteSpace(current[length]);
+
+            if (followedByBreak && previous.EndsWith(current[..length], StringComparison.Ordinal))
+            {
+                return length;
+            }
+        }
+
+        return 0;
+    }
+
     public async Task<bool> ReprocessAsync(Guid id, CancellationToken cancellationToken = default)
     {
         var document = await LoadOwnedAsync(id);
@@ -276,6 +355,17 @@ public class DocumentService : IDocumentService
         if (document is null)
         {
             return false;
+        }
+
+        // Already queued or running: it will be processed with current settings anyway. Queuing
+        // it again would run the whole pipeline once per click — harmless to the data, since each
+        // run replaces the last, but once embedding is added every extra run is a paid API call.
+        if (document.Status is DocumentStatus.Uploaded or DocumentStatus.Processing)
+        {
+            _logger.LogInformation(
+                "Reprocess of {DocumentId} ignored: already {Status}", document.Id, document.Status);
+
+            return true;
         }
 
         // Clear the previous failure and re-queue. The processor discards any earlier extraction

@@ -2,6 +2,7 @@ using System.Text;
 using DocuMind.Api.Authentication;
 using DocuMind.Application.Interfaces;
 using DocuMind.Application.Services;
+using DocuMind.Infrastructure.Chunking;
 using DocuMind.Infrastructure.Ingestion;
 using DocuMind.Infrastructure.Pdf;
 using DocuMind.Infrastructure.Persistence;
@@ -39,6 +40,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
         services.AddScoped<IDocumentRepository, DocumentRepository>();
         services.AddScoped<IDocumentTextRepository, DocumentTextRepository>();
+        services.AddScoped<IDocumentChunkRepository, DocumentChunkRepository>();
 
         return services;
     }
@@ -62,9 +64,19 @@ public static class ServiceCollectionExtensions
 
         services.AddSingleton<IFileValidator, FileValidator>();
 
-        // Extraction and cleaning are stateless, so they are shared singletons.
+        // Extraction, cleaning and chunking are stateless, so they are shared singletons.
         services.AddSingleton<IPdfTextExtractor, PdfPigTextExtractor>();
         services.AddSingleton<ITextCleaner, TextCleaner>();
+        services.AddSingleton<ITextChunker, ParagraphTextChunker>();
+
+        // Validated at startup: a bad chunk size should stop the app, not quietly produce
+        // useless chunks for every document uploaded afterwards.
+        services.AddOptions<ChunkingOptions>()
+            .Bind(configuration.GetSection(ChunkingOptions.SectionName))
+            .Validate(
+                options => !options.Validate().Any(),
+                "Rag chunking settings are invalid — see Rag:ChunkSize and Rag:ChunkOverlap.")
+            .ValidateOnStart();
 
         var provider = configuration[$"{StorageOptions.SectionName}:Provider"]
             ?? StorageProviders.Local;

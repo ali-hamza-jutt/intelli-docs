@@ -5,8 +5,7 @@
  * OpenAPI spec version: 1.0.0
  */
 
-export interface DocumentPageResponse {
-  pageNumber: number;
-  text: string;
-  wordCount: number;
-}
+export type GetApiDocumentsIdChunksParams = {
+offset?: number;
+limit?: number;
+};
