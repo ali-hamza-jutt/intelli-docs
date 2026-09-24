@@ -2,6 +2,7 @@ using System.Text;
 using DocuMind.Api.Authentication;
 using DocuMind.Application.Interfaces;
 using DocuMind.Application.Services;
+using DocuMind.Infrastructure.Ai;
 using DocuMind.Infrastructure.Chunking;
 using DocuMind.Infrastructure.Ingestion;
 using DocuMind.Infrastructure.Pdf;
@@ -115,6 +116,39 @@ public static class ServiceCollectionExtensions
             // Local disk keeps development working with no credentials. There is no direct-upload
             // service, so the ticket endpoints report that cleanly rather than failing obscurely.
             services.AddSingleton<IFileStorageService, LocalFileStorageService>();
+        }
+
+        return services;
+    }
+
+    /// <summary>
+    /// The AI provider. Embedding is stateless and the client underneath pools its own connections,
+    /// so one instance is shared.
+    /// </summary>
+    public static IServiceCollection AddAiServices(
+        this IServiceCollection services,
+        IConfiguration configuration)
+    {
+        // Validated at startup: a dimension that disagrees with module 7's vector column, or an
+        // unimplemented provider, should stop the app rather than fail every upload later.
+        services.AddOptions<AiOptions>()
+            .Bind(configuration.GetSection(AiOptions.SectionName))
+            .Validate(
+                options => !options.Validate().Any(),
+                "AI settings are invalid — see AI:Provider, AI:EmbeddingModel and AI:EmbeddingDimensions.")
+            .ValidateOnStart();
+
+        services.AddSingleton<IEmbeddingService, OpenAIEmbeddingService>();
+
+        var ai = configuration.GetSection(AiOptions.SectionName).Get<AiOptions>() ?? new AiOptions();
+
+        if (!ai.IsConfigured)
+        {
+            // A warning rather than a failure to start, for the same reason as Cloudinary above: a
+            // missing paid credential should not stop a developer working on everything else.
+            Console.WriteLine(
+                "[AI] AI:ApiKey is not set — uploads will reach the embedding step and fail there. " +
+                "Set it with:\n  dotnet user-secrets set \"AI:ApiKey\" \"<key>\"");
         }
 
         return services;

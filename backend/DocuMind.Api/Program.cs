@@ -11,6 +11,7 @@ builder.Services.AddOpenApi();
 
 builder.Services.AddPersistence(builder.Configuration);
 builder.Services.AddApplicationServices();
+builder.Services.AddAiServices(builder.Configuration);
 builder.Services.AddBackgroundIngestion();
 builder.Services.AddFileStorage(builder.Configuration);
 builder.Services.AddTokenAuthentication(builder.Configuration);
