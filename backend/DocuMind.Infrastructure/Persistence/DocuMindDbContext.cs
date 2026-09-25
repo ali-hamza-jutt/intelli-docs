@@ -22,6 +22,12 @@ public class DocuMindDbContext : DbContext
 
     public DbSet<DocumentChunk> DocumentChunks => Set<DocumentChunk>();
 
+    public DbSet<Conversation> Conversations => Set<Conversation>();
+
+    public DbSet<ChatMessage> ChatMessages => Set<ChatMessage>();
+
+    public DbSet<MessageSource> MessageSources => Set<MessageSource>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         // Declared on the model so the migration installs it. Vector columns, the <=> operator and

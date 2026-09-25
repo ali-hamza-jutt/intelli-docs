@@ -49,6 +49,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IDocumentRepository, DocumentRepository>();
         services.AddScoped<IDocumentTextRepository, DocumentTextRepository>();
         services.AddScoped<IDocumentChunkRepository, DocumentChunkRepository>();
+        services.AddScoped<IConversationRepository, ConversationRepository>();
 
         return services;
     }
@@ -199,6 +200,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IAuthService, AuthService>();
         services.AddScoped<IDocumentService, DocumentService>();
         services.AddScoped<IDocumentProcessor, DocumentProcessor>();
+        services.AddScoped<IConversationService, ConversationService>();
 
         return services;
     }

@@ -5,11 +5,15 @@
  * OpenAPI spec version: 1.0.0
  */
 
+export * from './askInConversationRequest';
 export * from './authResponse';
 export * from './changePasswordRequest';
 export * from './chatAnswerResponse';
 export * from './chatCitationResponse';
+export * from './chatMessageResponse';
 export * from './confirmUploadRequest';
+export * from './conversationResponse';
+export * from './conversationSummaryResponse';
 export * from './documentChatRequest';
 export * from './documentChunkResponse';
 export * from './documentChunksResponse';
@@ -20,12 +24,14 @@ export * from './documentTextResponse';
 export * from './getApiDocumentsIdChunksParams';
 export * from './iFormFile';
 export * from './loginRequest';
+export * from './messageSourceResponse';
 export * from './postApiDocumentsUploadBody';
 export * from './problemDetails';
 export * from './registerRequest';
 export * from './semanticMatchResponse';
 export * from './semanticSearchRequest';
 export * from './semanticSearchResponse';
+export * from './startConversationRequest';
 export * from './updateProfileRequest';
 export * from './uploadTicketRequest';
 export * from './uploadTicketResponse';

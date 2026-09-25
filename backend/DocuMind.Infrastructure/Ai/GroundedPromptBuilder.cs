@@ -26,11 +26,29 @@ public class GroundedPromptBuilder : IPromptBuilder
         4. Never invent a page number, a file name or a quotation.
         5. Be concise and factual. Prefer the document's own wording for specifics such as numbers,
            dates and names.
+        6. Earlier turns are given only so a follow-up question makes sense. They are not evidence:
+           facts still have to come from the passages.
         """;
 
-    public LlmPrompt BuildAnswerPrompt(string question, IReadOnlyList<ChunkMatch> passages)
+    public LlmPrompt BuildAnswerPrompt(
+        string question,
+        IReadOnlyList<ChunkMatch> passages,
+        IReadOnlyList<RagTurn>? history = null)
     {
         var user = new StringBuilder();
+
+        if (history is { Count: > 0 })
+        {
+            user.AppendLine("Earlier in this conversation:");
+            user.AppendLine();
+
+            foreach (var turn in history)
+            {
+                user.AppendLine($"{(turn.FromUser ? "User" : "Assistant")}: {turn.Text}");
+            }
+
+            user.AppendLine();
+        }
 
         user.AppendLine("Passages:");
         user.AppendLine();

@@ -6,13 +6,6 @@ import type { IconName } from "@/components/ui/Icon";
    the signed-in user now come from the backend.
    ========================================================================= */
 
-export const RECENT_CONVERSATIONS = [
-  { id: "leave", title: "Employee leave policy", when: "2h ago" },
-  { id: "q3", title: "Q3 financial summary", when: "Yesterday" },
-  { id: "eng", title: "Engineering guidelines", when: "2d ago" },
-  { id: "refund", title: "Customer refund policy", when: "5d ago" },
-];
-
 export const SUGGESTIONS = [
   "Summarize my documents",
   "What is our leave policy?",

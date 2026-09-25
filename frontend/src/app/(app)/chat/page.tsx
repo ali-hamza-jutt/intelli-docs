@@ -3,142 +3,210 @@
 import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
 import { Icon } from "@/components/ui/Icon";
 import {
   AssistantMessage,
   ThinkingIndicator,
   UserMessage,
-  type ChatTurn,
 } from "@/components/chat/ChatMessage";
 import { ChatComposer } from "@/components/chat/ChatComposer";
-import { DocumentPicker } from "@/components/chat/DocumentPicker";
+import { ConversationPane } from "@/components/chat/ConversationPane";
 import { SourceRail, SourceSheet } from "@/components/chat/SourcePanel";
 import { UploadDialog } from "@/components/documents/UploadDialog";
+import { useGetApiDocuments } from "@/lib/api/generated/documents/documents";
 import {
-  useGetApiDocuments,
-  usePostApiDocumentsIdChat,
-} from "@/lib/api/generated/documents/documents";
+  useGetApiConversations,
+  useGetApiConversationsId,
+  usePostApiConversations,
+  usePostApiConversationsIdMessages,
+  useDeleteApiConversationsId,
+  getGetApiConversationsQueryKey,
+  getGetApiConversationsIdQueryKey,
+} from "@/lib/api/generated/conversations/conversations";
 import { ApiError } from "@/lib/api/client";
 import { SUGGESTIONS } from "@/lib/data";
 import { useToast } from "@/components/ui/Toast";
-import type { ChatCitationResponse } from "@/lib/api/model";
+import type { MessageSourceResponse } from "@/lib/api/model";
 
 function ChatScreen() {
   const params = useSearchParams();
   const router = useRouter();
   const pathname = usePathname();
   const toast = useToast();
+  const queryClient = useQueryClient();
 
-  // Both the document and an opening question can arrive in the URL — from "Chat with document"
-  // on a document, or from a suggestion on the dashboard — which keeps a conversation shareable.
+  // Which thread is open, or which document a new one would be about. Both live in the URL, so a
+  // reload — the thing this module exists to survive — lands back in the same place.
+  const conversationId = params.get("c");
   const documentId = params.get("documentId");
-  const initialQuestion = params.get("q")?.trim() ?? "";
 
-  const [turns, setTurns] = useState<ChatTurn[]>([]);
-  const [draft, setDraft] = useState(initialQuestion);
-  const [openCitation, setOpenCitation] = useState<ChatCitationResponse | null>(null);
+  const [draft, setDraft] = useState("");
+  const [openSource, setOpenSource] = useState<MessageSourceResponse | null>(null);
   const [uploadOpen, setUploadOpen] = useState(false);
 
-  const scrollRef = useRef<HTMLDivElement>(null);
-  const chat = usePostApiDocumentsIdChat();
+  // The question is shown immediately while the server works, then dropped when the saved thread
+  // comes back holding it. Nothing is kept in two places for longer than one round trip.
+  const [pendingQuestion, setPendingQuestion] = useState<string | null>(null);
 
-  // Only a finished document can be asked about: one still processing has no passages to search.
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  const conversations = useGetApiConversations();
   const documents = useGetApiDocuments();
   const ready = (documents.data ?? []).filter((document) => document.status === "Completed");
 
-  const selectDocument = useCallback(
+  const conversation = useGetApiConversationsId(conversationId ?? "", {
+    query: { enabled: Boolean(conversationId) },
+  });
+
+  const start = usePostApiConversations();
+  const ask = usePostApiConversationsIdMessages();
+  const remove = useDeleteApiConversationsId();
+
+  const pending = start.isPending || ask.isPending;
+  const messages = conversation.data?.messages ?? [];
+  const activeDocumentId = conversation.data?.documentId ?? documentId;
+
+  const openConversation = useCallback(
     (id: string) => {
-      setTurns([]);
-      setOpenCitation(null);
-      router.replace(`${pathname}?documentId=${id}`);
+      setOpenSource(null);
+      setPendingQuestion(null);
+      router.replace(`${pathname}?c=${id}`);
     },
     [pathname, router],
+  );
+
+  const refreshThread = useCallback(
+    (id: string) => {
+      queryClient.invalidateQueries({ queryKey: getGetApiConversationsIdQueryKey(id) });
+      queryClient.invalidateQueries({ queryKey: getGetApiConversationsQueryKey() });
+    },
+    [queryClient],
+  );
+
+  const failed = useCallback(
+    (error: unknown, question: string) => {
+      setPendingQuestion(null);
+      setDraft(question);
+      toast(error instanceof ApiError ? error.message : "Could not answer that question", "warn");
+    },
+    [toast],
   );
 
   const send = useCallback(
     (text: string) => {
       const question = text.trim();
 
-      if (!question || chat.isPending) return;
+      if (!question || pending) return;
 
-      if (!documentId) {
+      if (!conversationId && !documentId) {
         toast("Choose a document to ask about first", "warn");
         return;
       }
 
-      setTurns((previous) => [
-        ...previous,
-        { id: `u${Date.now()}`, role: "user", text: question },
-      ]);
       setDraft("");
-      setOpenCitation(null);
+      setOpenSource(null);
+      setPendingQuestion(question);
 
-      chat.mutate(
-        { id: documentId, data: { question } },
+      if (conversationId) {
+        ask.mutate(
+          { id: conversationId, data: { question } },
+          {
+            onSuccess: () => {
+              setPendingQuestion(null);
+              refreshThread(conversationId);
+            },
+            onError: (error) => failed(error, question),
+          },
+        );
+
+        return;
+      }
+
+      // No thread yet: the first question creates one about the chosen document and is answered in
+      // the same request.
+      start.mutate(
+        { data: { documentId: documentId!, question } },
         {
-          onSuccess: (answer) =>
-            setTurns((previous) => [
-              ...previous,
-              {
-                id: `a${Date.now()}`,
-                role: "assistant",
-                text: answer.answer,
-                citations: answer.citations,
-                grounded: answer.grounded,
-              },
-            ]),
-          onError: (error) => {
-            // The turn that failed is dropped rather than left hanging, so "Ask again" is the
-            // question itself rather than a retry of a half-finished exchange.
-            setTurns((previous) => previous.slice(0, -1));
-            setDraft(question);
-            toast(
-              error instanceof ApiError ? error.message : "Could not answer that question",
-              "warn",
-            );
+          onSuccess: (created) => {
+            setPendingQuestion(null);
+            queryClient.invalidateQueries({ queryKey: getGetApiConversationsQueryKey() });
+            router.replace(`${pathname}?c=${created.id}`);
+          },
+          onError: (error) => failed(error, question),
+        },
+      );
+    },
+    [ask, conversationId, documentId, failed, pathname, pending, queryClient, refreshThread, router, start, toast],
+  );
+
+  const deleteConversation = useCallback(
+    (id: string) => {
+      remove.mutate(
+        { id },
+        {
+          onSuccess: () => {
+            toast("Conversation deleted");
+            queryClient.invalidateQueries({ queryKey: getGetApiConversationsQueryKey() });
+
+            if (id === conversationId) {
+              router.replace(pathname);
+            }
           },
         },
       );
     },
-    [chat, documentId, toast],
+    [conversationId, pathname, queryClient, remove, router, toast],
   );
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
-  }, [turns, chat.isPending]);
+  }, [messages.length, pendingQuestion]);
 
-  const lastQuestion = [...turns].reverse().find((turn) => turn.role === "user")?.text ?? "";
+  const lastQuestion =
+    [...messages].reverse().find((message) => message.role === "User")?.content ?? "";
+  const isEmpty = messages.length === 0 && pendingQuestion === null && !conversation.isPending;
 
   return (
     <div className="flex h-[calc(100vh-140px)] overflow-hidden md:h-[calc(100vh-64px)]">
-      <DocumentPicker
-        documents={ready}
-        loading={documents.isPending}
-        activeId={documentId}
-        onSelect={selectDocument}
+      <ConversationPane
+        conversations={conversations.data ?? []}
+        loading={conversations.isPending}
+        activeId={conversationId}
+        onSelect={openConversation}
+        onDelete={deleteConversation}
         onNewChat={() => {
-          setTurns([]);
-          setOpenCitation(null);
+          setOpenSource(null);
+          setPendingQuestion(null);
+          router.replace(pathname);
         }}
       />
 
       <div className="flex min-w-[320px] flex-1 flex-col bg-canvas">
         <div ref={scrollRef} className="flex-1 overflow-auto px-5 py-6">
           <div className="mx-auto flex max-w-[720px] flex-col gap-5">
-            {turns.length === 0 && !chat.isPending && (
+            {conversation.data?.documentName === null && (
+              <p className="m-0 flex items-center gap-2 rounded-control border border-line bg-surface px-3.5 py-2.5 text-small text-muted">
+                <Icon name="alert" className="text-base text-warning" />
+                The document this conversation was about has been deleted. Its answers and sources
+                are kept, but new questions have nothing left to search.
+              </p>
+            )}
+
+            {isEmpty && (
               <div className="px-3 py-12 text-center animate-fade-up">
                 <span className="inline-flex size-[58px] items-center justify-center rounded-panel border border-line bg-surface text-[26px] text-brand">
-                  <Icon name={documentId ? "brand" : "fileText"} />
+                  <Icon name={activeDocumentId ? "brand" : "fileText"} />
                 </span>
 
-                {documentId ? (
+                {activeDocumentId ? (
                   <>
                     <h2 className="mt-5 mb-2 text-[22px] font-bold tracking-[-0.02em]">
                       Ask about this document.
                     </h2>
                     <p className="mx-auto mb-6 max-w-[420px] text-lead leading-relaxed text-muted">
                       Every answer is written from passages of this document, with the pages it came
-                      from.
+                      from. The conversation is saved as you go.
                     </p>
                     <div className="mx-auto grid max-w-[520px] gap-2.5 [grid-template-columns:repeat(auto-fit,minmax(220px,1fr))]">
                       {SUGGESTIONS.map((text) => (
@@ -158,7 +226,8 @@ function ChatScreen() {
                       Choose a document to ask about.
                     </h2>
                     <p className="mx-auto mb-6 max-w-[440px] text-lead leading-relaxed text-muted">
-                      Pick one from the list, or open a document and choose “Chat with document”.
+                      Pick one below, open an earlier conversation, or choose “Chat with document”
+                      from a document.
                     </p>
                     <Link href="/documents" className="btn btn-secondary btn-md">
                       <Icon name="fileText" className="text-base" />
@@ -169,21 +238,29 @@ function ChatScreen() {
               </div>
             )}
 
-            {turns.map((turn) => (
-              <div key={turn.id} className="animate-fade-up">
-                {turn.role === "user" ? (
-                  <UserMessage text={turn.text} />
-                ) : (
+            {messages.map((message) =>
+              message.role === "User" ? (
+                <div key={message.id} className="animate-fade-up">
+                  <UserMessage text={message.content} />
+                </div>
+              ) : (
+                <div key={message.id} className="animate-fade-up">
                   <AssistantMessage
-                    turn={turn}
-                    onOpenCitation={setOpenCitation}
+                    message={message}
+                    onOpenSource={setOpenSource}
                     onRegenerate={() => send(lastQuestion)}
                   />
-                )}
-              </div>
-            ))}
+                </div>
+              ),
+            )}
 
-            {chat.isPending && <ThinkingIndicator />}
+            {pendingQuestion && (
+              <div className="animate-fade-up">
+                <UserMessage text={pendingQuestion} />
+              </div>
+            )}
+
+            {pending && <ThinkingIndicator />}
           </div>
         </div>
 
@@ -192,17 +269,19 @@ function ChatScreen() {
           onChange={setDraft}
           onSubmit={() => send(draft)}
           onAttach={() => setUploadOpen(true)}
-          pending={chat.isPending}
+          pending={pending}
           documents={ready}
-          documentId={documentId}
-          onDocumentChange={selectDocument}
+          documentId={activeDocumentId ?? null}
+          documentName={conversation.data?.documentName}
+          locked={Boolean(conversationId)}
+          onDocumentChange={(id) => router.replace(`${pathname}?documentId=${id}`)}
         />
       </div>
 
-      {openCitation && (
+      {openSource && (
         <>
-          <SourceRail citation={openCitation} onClose={() => setOpenCitation(null)} />
-          <SourceSheet citation={openCitation} onClose={() => setOpenCitation(null)} />
+          <SourceRail source={openSource} onClose={() => setOpenSource(null)} />
+          <SourceSheet source={openSource} onClose={() => setOpenSource(null)} />
         </>
       )}
 

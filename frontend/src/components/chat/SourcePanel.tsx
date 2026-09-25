@@ -4,29 +4,29 @@ import Link from "next/link";
 import { Icon } from "@/components/ui/Icon";
 import { IconButton } from "@/components/ui/IconButton";
 import { pageLabel } from "@/components/chat/ChatMessage";
-import type { ChatCitationResponse } from "@/lib/api/model";
+import type { MessageSourceResponse } from "@/lib/api/model";
 
 /**
  * The passage the answer was written from, exactly as it was sent to the model.
  *
- * This is the whole point of citations: the user can read the source text themselves and judge
+ * This is the whole point of sources: the user can read the source text themselves and judge
  * whether the answer represents it fairly.
  */
-function SourceBody({ citation }: { citation: ChatCitationResponse }) {
+function SourceBody({ source }: { source: MessageSourceResponse }) {
   return (
     <p className="m-0 rounded-control border-l-[3px] border-warning bg-warning-soft px-3 py-2.5 text-body leading-[1.75] whitespace-pre-wrap text-ink">
-      {citation.text}
+      {source.text}
     </p>
   );
 }
 
-function SourceHeading({ citation }: { citation: ChatCitationResponse }) {
+function SourceHeading({ source }: { source: MessageSourceResponse }) {
   return (
     <div className="min-w-0">
-      <p className="m-0 truncate text-md font-semibold">{citation.fileName}</p>
+      <p className="m-0 truncate text-md font-semibold">{source.fileName}</p>
       <p className="mt-1 text-caption text-subtle">
-        {pageLabel(citation)} · cited as [{citation.marker}] ·{" "}
-        {Math.round(citation.similarity * 100)}% match
+        {pageLabel(source)} · cited as [{source.marker}] ·{" "}
+        {Math.round(source.similarity * 100)}% match
       </p>
     </div>
   );
@@ -34,10 +34,10 @@ function SourceHeading({ citation }: { citation: ChatCitationResponse }) {
 
 /** Wide screens: a docked right-hand rail. */
 export function SourceRail({
-  citation,
+  source,
   onClose,
 }: {
-  citation: ChatCitationResponse;
+  source: MessageSourceResponse;
   onClose: () => void;
 }) {
   return (
@@ -50,12 +50,12 @@ export function SourceRail({
         <IconButton icon="x" label="Close sources" size="sm" onClick={onClose} />
       </div>
       <div className="p-[18px]">
-        <SourceHeading citation={citation} />
+        <SourceHeading source={source} />
         <div className="mt-4">
-          <SourceBody citation={citation} />
+          <SourceBody source={source} />
         </div>
         <Link
-          href={`/documents/${citation.documentId}`}
+          href={`/documents/${source.documentId}`}
           className="btn btn-secondary btn-md mt-[18px] w-full"
         >
           <Icon name="external" className="text-base" />
@@ -68,17 +68,17 @@ export function SourceRail({
 
 /** Narrow screens: a bottom sheet with the same content. */
 export function SourceSheet({
-  citation,
+  source,
   onClose,
 }: {
-  citation: ChatCitationResponse;
+  source: MessageSourceResponse;
   onClose: () => void;
 }) {
   return (
     <div className="fixed inset-x-0 bottom-0 z-70 max-h-[60vh] overflow-auto rounded-t-panel border-t border-line bg-surface px-[18px] pt-4 pb-6 shadow-sheet animate-sheet-up 2xl:hidden">
       <div className="mx-auto mb-3.5 h-1 w-9 rounded-pill bg-line" />
       <div className="flex items-start justify-between gap-3">
-        <SourceHeading citation={citation} />
+        <SourceHeading source={source} />
         <IconButton
           icon="x"
           label="Close sources"
@@ -88,7 +88,7 @@ export function SourceSheet({
         />
       </div>
       <div className="mt-4">
-        <SourceBody citation={citation} />
+        <SourceBody source={source} />
       </div>
     </div>
   );

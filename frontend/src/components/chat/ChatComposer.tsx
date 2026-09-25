@@ -19,6 +19,8 @@ export function ChatComposer({
   pending,
   documents,
   documentId,
+  documentName,
+  locked,
   onDocumentChange,
 }: {
   value: string;
@@ -28,6 +30,10 @@ export function ChatComposer({
   pending: boolean;
   documents: DocumentResponse[];
   documentId: string | null;
+  /** The open conversation's document, or null when it has been deleted. */
+  documentName?: string | null;
+  /** Inside a conversation the document is fixed, so it is shown rather than offered. */
+  locked: boolean;
   onDocumentChange: (id: string) => void;
 }) {
   return (
@@ -60,21 +66,31 @@ export function ChatComposer({
           <div className="flex items-center gap-2">
             <IconButton icon="paperclip" label="Attach document" onClick={onAttach} />
 
-            <Select
-              label="Document to ask about"
-              value={documentId ?? ""}
-              onChange={(e) => onDocumentChange(e.target.value)}
-              className="max-w-[200px] px-2.5 py-1.5 text-caption text-muted"
-            >
-              <option value="" disabled>
-                Choose a document
-              </option>
-              {documents.map((document) => (
-                <option key={document.id} value={document.id}>
-                  {document.fileName}
+            {locked ? (
+              <span
+                title={documentName ?? undefined}
+                className="flex min-w-0 items-center gap-1.5 rounded-field bg-canvas px-2.5 py-1.5 text-caption text-muted"
+              >
+                <Icon name="fileText" className="flex-none text-small text-subtle" />
+                <span className="truncate">{documentName ?? "Document deleted"}</span>
+              </span>
+            ) : (
+              <Select
+                label="Document to ask about"
+                value={documentId ?? ""}
+                onChange={(e) => onDocumentChange(e.target.value)}
+                className="max-w-[200px] px-2.5 py-1.5 text-caption text-muted"
+              >
+                <option value="" disabled>
+                  Choose a document
                 </option>
-              ))}
-            </Select>
+                {documents.map((document) => (
+                  <option key={document.id} value={document.id}>
+                    {document.fileName}
+                  </option>
+                ))}
+              </Select>
+            )}
 
             <span className="flex-1" />
 
