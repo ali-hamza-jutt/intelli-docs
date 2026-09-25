@@ -41,14 +41,23 @@ public partial class RagService : IRagService
         _logger = logger;
     }
 
+    public int MaxHistoryMessages => _options.MaxHistoryMessages;
+
     public async Task<RagAnswer> AskAsync(
         Guid userId,
         string question,
         Guid? documentId = null,
+        IReadOnlyList<RagTurn>? history = null,
         CancellationToken cancellationToken = default)
     {
+        var recent = Bounded(history);
+
         var passages = await _search.SearchAsync(
-            question, userId, _options.MaxContextChunks, documentId, cancellationToken);
+            RetrievalQuery(question, recent),
+            userId,
+            _options.MaxContextChunks,
+            documentId,
+            cancellationToken);
 
         if (passages.Count == 0)
         {
@@ -57,7 +66,7 @@ public partial class RagService : IRagService
             return new RagAnswer(question, NoContextAnswer, Grounded: false, [], null, 0, 0);
         }
 
-        var prompt = _prompts.BuildAnswerPrompt(question, passages);
+        var prompt = _prompts.BuildAnswerPrompt(question, passages, recent);
         var completion = await _llm.CompleteAsync(prompt, cancellationToken);
         var citations = CitationsIn(completion.Text, passages);
 
@@ -73,6 +82,38 @@ public partial class RagService : IRagService
             _llm.Model,
             completion.InputTokens,
             completion.OutputTokens);
+    }
+
+    /// <summary>
+    /// The tail of the thread, never more than the configured number of turns.
+    /// </summary>
+    private IReadOnlyList<RagTurn>? Bounded(IReadOnlyList<RagTurn>? history)
+    {
+        if (history is null or { Count: 0 })
+        {
+            return null;
+        }
+
+        return history.Count <= MaxHistoryMessages
+            ? history
+            : [.. history.Skip(history.Count - MaxHistoryMessages)];
+    }
+
+    /// <summary>
+    /// What gets embedded and searched for.
+    ///
+    /// "And for sick leave?" retrieves nothing useful on its own, so the previous question is
+    /// prepended to give it a subject. Only the previous <em>question</em>, not the answer: an answer
+    /// is long enough to drown out the words that matter, and only one, because further back the
+    /// topic has usually moved on.
+    /// </summary>
+    private static string RetrievalQuery(string question, IReadOnlyList<RagTurn>? history)
+    {
+        var previousQuestion = history?.LastOrDefault(turn => turn.FromUser)?.Text;
+
+        return string.IsNullOrWhiteSpace(previousQuestion)
+            ? question
+            : $"{previousQuestion}\n{question}";
     }
 
     /// <summary>

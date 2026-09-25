@@ -3,22 +3,13 @@
 import { Icon } from "@/components/ui/Icon";
 import { IconButton } from "@/components/ui/IconButton";
 import { useToast } from "@/components/ui/Toast";
-import type { ChatCitationResponse } from "@/lib/api/model";
-
-export type ChatTurn = {
-  id: string;
-  role: "user" | "assistant";
-  text: string;
-  citations?: ChatCitationResponse[];
-  /** False when nothing in the document matched, so the answer is a refusal rather than a claim. */
-  grounded?: boolean;
-};
+import type { ChatMessageResponse, MessageSourceResponse } from "@/lib/api/model";
 
 /** "Page 4" or "Pages 4–5", matching how the answer's citation reads. */
-export function pageLabel(citation: ChatCitationResponse) {
-  return citation.pageNumber === citation.endPageNumber
-    ? `Page ${citation.pageNumber}`
-    : `Pages ${citation.pageNumber}–${citation.endPageNumber}`;
+export function pageLabel(source: MessageSourceResponse) {
+  return source.pageNumber === source.endPageNumber
+    ? `Page ${source.pageNumber}`
+    : `Pages ${source.pageNumber}–${source.endPageNumber}`;
 }
 
 export function UserMessage({ text }: { text: string }) {
@@ -35,16 +26,16 @@ export function UserMessage({ text }: { text: string }) {
 }
 
 export function AssistantMessage({
-  turn,
-  onOpenCitation,
+  message,
+  onOpenSource,
   onRegenerate,
 }: {
-  turn: ChatTurn;
-  onOpenCitation: (citation: ChatCitationResponse) => void;
+  message: ChatMessageResponse;
+  onOpenSource: (source: MessageSourceResponse) => void;
   onRegenerate: () => void;
 }) {
   const toast = useToast();
-  const citations = turn.citations ?? [];
+  const sources = message.sources;
 
   return (
     <div className="flex gap-3">
@@ -57,29 +48,29 @@ export function AssistantMessage({
 
         <div className="card px-[18px] py-4">
           {/* whitespace-pre-wrap keeps the paragraphs and lists the model writes. */}
-          <p className="m-0 text-lead leading-[1.7] whitespace-pre-wrap text-ink">{turn.text}</p>
+          <p className="m-0 text-lead leading-[1.7] whitespace-pre-wrap text-ink">{message.content}</p>
 
-          {turn.grounded === false && (
+          {message.grounded === false && (
             <p className="mt-3 mb-0 flex items-center gap-2 text-small text-subtle">
               <Icon name="alert" className="text-base" />
               Nothing in this document was close enough to the question, so no answer was written.
             </p>
           )}
 
-          {citations.length > 0 && (
+          {sources.length > 0 && (
             <div className="mt-4 border-t border-line-soft pt-3.5">
               <p className="mb-2.5 eyebrow">Sources</p>
               <div className="flex flex-wrap gap-2">
-                {citations.map((citation) => (
+                {sources.map((source) => (
                   <button
-                    key={citation.marker}
-                    onClick={() => onOpenCitation(citation)}
+                    key={source.marker}
+                    onClick={() => onOpenSource(source)}
                     className="inline-flex cursor-pointer items-center gap-2 rounded-field border border-line bg-canvas px-3 py-2 text-caption transition-colors hover:border-brand-border hover:bg-brand-soft"
                   >
                     {/* The marker matches the [n] in the answer above, so a claim can be traced. */}
-                    <span className="font-semibold text-brand">[{citation.marker}]</span>
-                    <span className="font-semibold">{citation.fileName}</span>
-                    <span className="text-subtle">{pageLabel(citation)}</span>
+                    <span className="font-semibold text-brand">[{source.marker}]</span>
+                    <span className="font-semibold">{source.fileName}</span>
+                    <span className="text-subtle">{pageLabel(source)}</span>
                   </button>
                 ))}
               </div>
@@ -93,7 +84,7 @@ export function AssistantMessage({
             label="Copy"
             size="sm"
             onClick={() => {
-              navigator.clipboard?.writeText(turn.text);
+              navigator.clipboard?.writeText(message.content);
               toast("Answer copied");
             }}
           />

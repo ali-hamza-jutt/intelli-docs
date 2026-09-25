@@ -217,8 +217,14 @@ public class DocumentsController : ControllerBase
             });
         }
 
+        // No history: this endpoint answers one question without keeping a thread. A saved
+        // conversation goes through /api/conversations instead.
         var answer = await _ragService.AskAsync(
-            _currentUser.RequireUserId(), request.Question, id, cancellationToken);
+            _currentUser.RequireUserId(),
+            request.Question,
+            id,
+            history: null,
+            cancellationToken);
 
         return Ok(new ChatAnswerResponse
         {

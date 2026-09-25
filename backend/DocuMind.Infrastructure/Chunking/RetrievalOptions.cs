@@ -28,9 +28,20 @@ public class RetrievalOptions
     /// </summary>
     public int MaxContextChunks { get; set; } = 5;
 
+    /// <summary>
+    /// How many earlier turns of a conversation are replayed into a prompt. Every one is re-sent with
+    /// every question, so an unbounded history costs more on each turn while adding less.
+    /// </summary>
+    public int MaxHistoryMessages { get; set; } = 8;
+
     /// <summary>Returns a message for each problem, or nothing if the settings are usable.</summary>
     public IEnumerable<string> Validate()
     {
+        if (MaxHistoryMessages is < 0 or > 50)
+        {
+            yield return $"Rag:MaxHistoryMessages must be between 0 and 50 (was {MaxHistoryMessages}).";
+        }
+
         if (MaxContextChunks is < 1 or > 20)
         {
             yield return $"Rag:MaxContextChunks must be between 1 and 20 (was {MaxContextChunks}).";

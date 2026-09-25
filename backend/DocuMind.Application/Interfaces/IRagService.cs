@@ -10,14 +10,29 @@ namespace DocuMind.Application.Interfaces;
 /// </summary>
 public interface IRagService
 {
+    /// <summary>
+    /// How many earlier turns may be fed back in. Bounded because history costs tokens on every
+    /// question and adds nothing once it is far enough back.
+    /// </summary>
+    int MaxHistoryMessages { get; }
+
     /// <param name="userId">Whose documents may be searched. Never taken from client input.</param>
     /// <param name="documentId">Restricts retrieval to one document when set.</param>
+    /// <param name="history">
+    /// Earlier turns in reading order, oldest first. Used twice: to make sense of a follow-up such
+    /// as "and for sick leave?", which means nothing on its own, and to keep the answer consistent
+    /// with what was already said.
+    /// </param>
     Task<RagAnswer> AskAsync(
         Guid userId,
         string question,
         Guid? documentId = null,
+        IReadOnlyList<RagTurn>? history = null,
         CancellationToken cancellationToken = default);
 }
+
+/// <summary>An earlier turn, reduced to what a prompt needs: who said it and what they said.</summary>
+public record RagTurn(bool FromUser, string Text);
 
 /// <summary>
 /// An answer and its evidence.

@@ -11,9 +11,11 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { DocumentListItem } from "@/components/documents/DocumentListItem";
 import { UploadDialog } from "@/components/documents/UploadDialog";
 import { useGetApiDocuments } from "@/lib/api/generated/documents/documents";
+import { useGetApiConversations } from "@/lib/api/generated/conversations/conversations";
 import { isInProgress, shouldPoll } from "@/lib/documentStatus";
 import { useAuth } from "@/lib/auth/AuthProvider";
-import { RECENT_CONVERSATIONS, SUGGESTIONS } from "@/lib/data";
+import { formatDate } from "@/lib/format";
+import { SUGGESTIONS } from "@/lib/data";
 
 const POLL_MS = 3000;
 
@@ -29,6 +31,8 @@ export default function DashboardPage() {
         query.state.data?.some(shouldPoll) ? POLL_MS : false,
     },
   });
+
+  const conversations = useGetApiConversations();
 
   // Counts are derived from the list rather than a separate endpoint — at this scale one
   // request is cheaper than two, and the numbers can never disagree with the list below.
@@ -151,15 +155,27 @@ export default function DashboardPage() {
             </Link>
           }
         >
-          {RECENT_CONVERSATIONS.map((convo) => (
+          {conversations.data?.length === 0 && (
+            <EmptyState
+              icon="message"
+              title="No conversations yet"
+              body="Open a processed document and ask it something."
+            />
+          )}
+
+          {conversations.data?.slice(0, 4).map((conversation) => (
             <Link
-              key={convo.id}
-              href="/chat"
+              key={conversation.id}
+              href={`/chat?c=${conversation.id}`}
               className="flex w-full items-center gap-3 border-b border-line-soft px-[18px] py-3.5 text-left transition-colors last:border-b-0 hover:bg-canvas"
             >
               <Icon name="message" className="text-md text-subtle" />
-              <span className="flex-1 text-body font-medium">{convo.title}</span>
-              <span className="text-tiny text-subtle">{convo.when}</span>
+              <span className="min-w-0 flex-1 truncate text-body font-medium">
+                {conversation.title}
+              </span>
+              <span className="flex-none text-tiny text-subtle">
+                {formatDate(conversation.updatedAt)}
+              </span>
             </Link>
           ))}
         </ListCard>

@@ -14,5 +14,12 @@ public interface IPromptBuilder
     /// model is told to cite those numbers, so a marker in the answer can be traced back to exactly
     /// one passage.
     /// </summary>
-    LlmPrompt BuildAnswerPrompt(string question, IReadOnlyList<ChunkMatch> passages);
+    /// <param name="history">
+    /// Earlier turns, oldest first. Included so a follow-up reads in context, while the rule that
+    /// facts come only from the passages still applies — history is what was said, not evidence.
+    /// </param>
+    LlmPrompt BuildAnswerPrompt(
+        string question,
+        IReadOnlyList<ChunkMatch> passages,
+        IReadOnlyList<RagTurn>? history = null);
 }
