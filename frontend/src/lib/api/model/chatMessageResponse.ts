@@ -14,6 +14,7 @@ export interface ChatMessageResponse {
   grounded?: boolean | null;
   /** @nullable */
   model?: string | null;
+  stopped: boolean;
   inputTokens: number;
   outputTokens: number;
   createdAt: string;

@@ -29,6 +29,33 @@ public interface IRagService
         Guid? documentId = null,
         IReadOnlyList<RagTurn>? history = null,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// The same answer, delivered as it is written: pieces of text first, then one final event with
+    /// the citations and usage.
+    ///
+    /// Citations come last on purpose. They are the passages the answer <em>cites</em>, and which
+    /// markers it used is not known until the text is finished.
+    /// </summary>
+    IAsyncEnumerable<RagStreamEvent> StreamAsync(
+        Guid userId,
+        string question,
+        Guid? documentId = null,
+        IReadOnlyList<RagTurn>? history = null,
+        CancellationToken cancellationToken = default);
+}
+
+/// <summary>What a streamed answer emits, in order: any number of deltas, then one final event.</summary>
+public abstract record RagStreamEvent
+{
+    /// <summary>The next piece of the answer's text.</summary>
+    public sealed record Delta(string Text) : RagStreamEvent;
+
+    /// <summary>
+    /// The finished answer, with its citations and cost. Absent if the stream was cancelled, in
+    /// which case the caller keeps whatever text it has already been handed.
+    /// </summary>
+    public sealed record Final(RagAnswer Answer) : RagStreamEvent;
 }
 
 /// <summary>An earlier turn, reduced to what a prompt needs: who said it and what they said.</summary>

@@ -1,3 +1,5 @@
+using System.Runtime.CompilerServices;
+using System.Text;
 using System.Text.RegularExpressions;
 using DocuMind.Application.Interfaces;
 using DocuMind.Infrastructure.Chunking;
@@ -82,6 +84,67 @@ public partial class RagService : IRagService
             _llm.Model,
             completion.InputTokens,
             completion.OutputTokens);
+    }
+
+    public async IAsyncEnumerable<RagStreamEvent> StreamAsync(
+        Guid userId,
+        string question,
+        Guid? documentId = null,
+        IReadOnlyList<RagTurn>? history = null,
+        [EnumeratorCancellation] CancellationToken cancellationToken = default)
+    {
+        var recent = Bounded(history);
+
+        var passages = await _search.SearchAsync(
+            RetrievalQuery(question, recent),
+            userId,
+            _options.MaxContextChunks,
+            documentId,
+            cancellationToken);
+
+        if (passages.Count == 0)
+        {
+            // Nothing to answer from, so nothing is generated. The refusal is still delivered as a
+            // delta, so a client has one path to render rather than two.
+            _logger.LogInformation("No passage cleared the similarity floor; the model was not asked");
+
+            yield return new RagStreamEvent.Delta(NoContextAnswer);
+            yield return new RagStreamEvent.Final(
+                new RagAnswer(question, NoContextAnswer, Grounded: false, [], null, 0, 0));
+
+            yield break;
+        }
+
+        var prompt = _prompts.BuildAnswerPrompt(question, passages, recent);
+        var answer = new StringBuilder();
+        var inputTokens = 0;
+        var outputTokens = 0;
+
+        await foreach (var chunk in _llm.StreamAsync(prompt, cancellationToken))
+        {
+            if (chunk.Text.Length > 0)
+            {
+                answer.Append(chunk.Text);
+
+                yield return new RagStreamEvent.Delta(chunk.Text);
+            }
+
+            if (chunk.InputTokens > 0 || chunk.OutputTokens > 0)
+            {
+                inputTokens = chunk.InputTokens;
+                outputTokens = chunk.OutputTokens;
+            }
+        }
+
+        var text = answer.ToString().Trim();
+        var citations = CitationsIn(text, passages);
+
+        _logger.LogInformation(
+            "Streamed an answer from {Passages} passages, {Cited} of them cited",
+            passages.Count, citations.Count);
+
+        yield return new RagStreamEvent.Final(new RagAnswer(
+            question, text, Grounded: true, citations, _llm.Model, inputTokens, outputTokens));
     }
 
     /// <summary>

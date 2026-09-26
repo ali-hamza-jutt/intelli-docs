@@ -3,6 +3,7 @@
 import { Icon } from "@/components/ui/Icon";
 import { IconButton } from "@/components/ui/IconButton";
 import { Select } from "@/components/ui/Field";
+import { Button } from "@/components/ui/Button";
 import type { DocumentResponse } from "@/lib/api/model";
 
 /**
@@ -16,6 +17,7 @@ export function ChatComposer({
   onChange,
   onSubmit,
   onAttach,
+  onStop,
   pending,
   documents,
   documentId,
@@ -27,6 +29,8 @@ export function ChatComposer({
   onChange: (value: string) => void;
   onSubmit: () => void;
   onAttach: () => void;
+  /** Cancels the answer being written, which cancels the request to the provider. */
+  onStop: () => void;
   pending: boolean;
   documents: DocumentResponse[];
   documentId: string | null;
@@ -98,14 +102,22 @@ export function ChatComposer({
               Enter to send · Shift+Enter for newline
             </span>
 
-            <button
-              type="submit"
-              aria-label={pending ? "Answering" : "Send"}
-              disabled={pending || !documentId}
-              className="btn btn-primary inline-flex size-9 items-center justify-center p-0 text-lg disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              <Icon name={pending ? "loader" : "send"} spinning={pending} />
-            </button>
+            {/* Stop is only offered once an answer is actually being written, because that is when
+                there is a provider request to cancel. */}
+            {pending ? (
+              <Button type="button" variant="secondary" size="sm" onClick={onStop}>
+                Stop generating
+              </Button>
+            ) : (
+              <button
+                type="submit"
+                aria-label="Send"
+                disabled={!documentId}
+                className="btn btn-primary inline-flex size-9 items-center justify-center p-0 text-lg disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <Icon name="send" />
+              </button>
+            )}
           </div>
         </div>
       </form>

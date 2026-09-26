@@ -50,6 +50,13 @@ export function AssistantMessage({
           {/* whitespace-pre-wrap keeps the paragraphs and lists the model writes. */}
           <p className="m-0 text-lead leading-[1.7] whitespace-pre-wrap text-ink">{message.content}</p>
 
+          {message.stopped && (
+            <p className="mt-3 mb-0 flex items-center gap-2 text-small text-subtle">
+              <Icon name="alert" className="text-base" />
+              You stopped this answer, so it is incomplete.
+            </p>
+          )}
+
           {message.grounded === false && (
             <p className="mt-3 mb-0 flex items-center gap-2 text-small text-subtle">
               <Icon name="alert" className="text-base" />
@@ -96,10 +103,35 @@ export function AssistantMessage({
 }
 
 /**
- * Shown while an answer is being prepared.
+ * The answer as it is being written, before it has been stored.
  *
- * One line rather than a checklist of stages: retrieval and generation happen in a single request,
- * so the client cannot honestly say which one is running.
+ * The caret is the honest signal that more is coming; sources are deliberately absent, because which
+ * passages the answer cites is not known until it has finished.
+ */
+export function StreamingMessage({ text }: { text: string }) {
+  return (
+    <div className="flex gap-3">
+      <span className="tile tile-brand size-[30px] text-lg">
+        <Icon name="sparkles" />
+      </span>
+
+      <div className="min-w-0 flex-1">
+        <p className="mb-1.5 eyebrow">DocuMind AI</p>
+
+        <div className="card px-[18px] py-4">
+          <p className="m-0 text-lead leading-[1.7] whitespace-pre-wrap text-ink">
+            {text}
+            <span className="font-semibold text-brand animate-caret">▍</span>
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Shown between sending a question and the first word of the answer — the wait while passages are
+ * retrieved and the model starts writing.
  */
 export function ThinkingIndicator() {
   return (
@@ -109,7 +141,7 @@ export function ThinkingIndicator() {
       </span>
       <div className="card flex items-center gap-2.5 px-[18px] py-3.5 text-small text-muted">
         <Icon name="loader" spinning className="text-base text-brand" />
-        Searching the document and writing an answer…
+        Searching the document…
       </div>
     </div>
   );
