@@ -86,3 +86,9 @@ app.MapGet("/health", (IHealthService health) => health.GetStatus())
     .WithName("GetHealth");
 
 app.Run();
+
+/// <summary>
+/// Named so the test host can start this application the way it really starts, rather than a
+/// rebuilt approximation of it. Top-level statements produce a class with no usable name otherwise.
+/// </summary>
+public partial class Program;
