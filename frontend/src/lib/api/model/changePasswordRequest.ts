@@ -7,9 +7,5 @@
 
 export interface ChangePasswordRequest {
   currentPassword: string;
-  /**
-     * @minLength 8
-     * @maxLength 128
-     */
   newPassword: string;
 }

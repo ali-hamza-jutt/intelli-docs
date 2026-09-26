@@ -4,7 +4,7 @@ namespace DocuMind.Application.DTOs.Search;
 
 public class DocumentChatRequest
 {
-    [Required, StringLength(2000, MinimumLength = 3)]
+    [Required]
     public string Question { get; set; } = string.Empty;
 }
 

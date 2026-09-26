@@ -1,9 +1,12 @@
+using DocuMind.Api.Extensions;
+using DocuMind.Application.Common;
 using DocuMind.Application.DTOs.Documents;
 using DocuMind.Application.DTOs.Search;
 using DocuMind.Application.Interfaces;
 using DocuMind.Domain.Entities;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace DocuMind.Api.Controllers;
 
@@ -31,6 +34,7 @@ public class DocumentsController : ControllerBase
     /// The response carries no secret — only a signature over the exact upload it authorises.
     /// </summary>
     [HttpPost("upload-ticket")]
+    [EnableRateLimiting(HardeningExtensions.UploadPolicy)]
     [ProducesResponseType(typeof(UploadTicketResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -62,6 +66,7 @@ public class DocumentsController : ControllerBase
     /// document is not usable yet — the client polls /status until it settles.
     /// </summary>
     [HttpPost("upload")]
+    [EnableRateLimiting(HardeningExtensions.UploadPolicy)]
     [ProducesResponseType(typeof(DocumentResponse), StatusCodes.Status202Accepted)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -186,6 +191,7 @@ public class DocumentsController : ControllerBase
     /// the user can open, and a question the document does not cover comes back as a refusal.
     /// </summary>
     [HttpPost("{id:guid}/chat")]
+    [EnableRateLimiting(HardeningExtensions.AiPolicy)]
     [ProducesResponseType(typeof(ChatAnswerResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -207,14 +213,13 @@ public class DocumentsController : ControllerBase
 
         if (document.Status != nameof(DocumentStatus.Completed))
         {
-            return Conflict(new
-            {
-                success = false,
-                message = document.Status == nameof(DocumentStatus.Failed)
+            // Thrown rather than returned, so the response is shaped by the one handler that shapes
+            // every other error.
+            throw new ConflictAppException(
+                document.Status == nameof(DocumentStatus.Failed)
                     ? "This document could not be processed, so there is nothing to search yet. Try processing it again."
                     : "This document is still being prepared. Try again once it has finished.",
-                errorCode = "DOCUMENT_NOT_READY"
-            });
+                "DOCUMENT_NOT_READY");
         }
 
         // No history: this endpoint answers one question without keeping a thread. A saved
@@ -249,6 +254,7 @@ public class DocumentsController : ControllerBase
 
     /// <summary>Re-runs extraction, discarding any previous result.</summary>
     [HttpPost("{id:guid}/reprocess")]
+    [EnableRateLimiting(HardeningExtensions.UploadPolicy)]
     [ProducesResponseType(typeof(DocumentResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<DocumentResponse>> Reprocess(Guid id, CancellationToken cancellationToken)

@@ -12,11 +12,20 @@
 export const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:5100";
 
-/** Shape the API returns for handled failures. */
+/**
+ * What the API returns for a failure: RFC-9457 ProblemDetails, with two additions of its own.
+ * `detail` is the sentence written for the reader; `errorCode` is the stable string to branch on.
+ * `traceId` appears in the server's log for the same request, so it is worth showing in a support
+ * message and never worth showing in place of `detail`.
+ */
 export type ApiErrorBody = {
-  success: false;
-  message: string;
-  errorCode: string;
+  title?: string;
+  detail?: string;
+  status?: number;
+  errorCode?: string;
+  traceId?: string;
+  /** Per-field messages when a request was rejected for its contents. */
+  errors?: Record<string, string[]>;
 };
 
 export class ApiError extends Error {
@@ -161,13 +170,15 @@ export async function apiRequest<T>(config: RequestConfig): Promise<T> {
   return (text ? JSON.parse(text) : undefined) as T;
 }
 
-async function toApiError(response: Response): Promise<ApiError> {
+export async function toApiError(response: Response): Promise<ApiError> {
   try {
-    const body = (await response.json()) as Partial<ApiErrorBody> & { title?: string };
+    const body = (await response.json()) as ApiErrorBody;
 
+    // detail first: it is the sentence written for this failure. title is a category ("Not found")
+    // and makes a poor message on its own, so it is only the fallback.
     return new ApiError(
       response.status,
-      body.message ?? body.title ?? "Something went wrong.",
+      body.detail ?? body.title ?? "Something went wrong.",
       body.errorCode ?? "UNKNOWN_ERROR",
     );
   } catch {

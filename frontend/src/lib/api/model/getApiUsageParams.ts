@@ -5,6 +5,6 @@
  * OpenAPI spec version: 1.0.0
  */
 
-export interface UpdateProfileRequest {
-  name: string;
-}
+export type GetApiUsageParams = {
+since?: string;
+};

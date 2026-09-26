@@ -6,19 +6,7 @@
  */
 
 export interface RegisterRequest {
-  /**
-     * @minLength 2
-     * @maxLength 120
-     */
   name: string;
-  /**
-     * @minLength 0
-     * @maxLength 256
-     */
   email: string;
-  /**
-     * @minLength 8
-     * @maxLength 128
-     */
   password: string;
 }

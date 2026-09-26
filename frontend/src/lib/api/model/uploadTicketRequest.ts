@@ -6,14 +6,6 @@
  */
 
 export interface UploadTicketRequest {
-  /**
-     * @minLength 1
-     * @maxLength 260
-     */
   fileName: string;
-  /**
-     * @minimum 1
-     * @maximum 9223372036854776000
-     */
   fileSize?: number;
 }

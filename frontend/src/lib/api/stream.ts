@@ -13,6 +13,7 @@ import {
   getAccessToken,
   refreshAccessToken,
   setAccessToken,
+  toApiError,
 } from "@/lib/api/client";
 import type { ChatMessageResponse } from "@/lib/api/model";
 
@@ -57,7 +58,7 @@ export async function streamAnswer({
   }
 
   if (!response.ok || !response.body) {
-    throw await toApiError(response);
+    throw await toStreamError(response);
   }
 
   const reader = response.body.getReader();
@@ -103,16 +104,11 @@ function handleFrame(
   }
 }
 
-async function toApiError(response: Response): Promise<ApiError> {
-  try {
-    const body = (await response.json()) as { message?: string; errorCode?: string };
+/** The same reading of ProblemDetails the generated calls get, so one failure reads one way. */
+async function toStreamError(response: Response): Promise<ApiError> {
+  const error = await toApiError(response);
 
-    return new ApiError(
-      response.status,
-      body.message ?? "Could not answer that question.",
-      body.errorCode ?? "UNKNOWN_ERROR",
-    );
-  } catch {
-    return new ApiError(response.status, "Could not answer that question.", "UNKNOWN_ERROR");
-  }
+  return error.message === "Something went wrong."
+    ? new ApiError(error.status, "Could not answer that question.", error.errorCode)
+    : error;
 }

@@ -6,9 +6,5 @@
  */
 
 export interface AskInConversationRequest {
-  /**
-     * @minLength 3
-     * @maxLength 2000
-     */
   question: string;
 }

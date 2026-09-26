@@ -23,6 +23,7 @@ public class DocumentProcessor : IDocumentProcessor
     private readonly ITextChunker _chunker;
     private readonly IDocumentChunkRepository _chunks;
     private readonly IEmbeddingService _embeddings;
+    private readonly IUsageRecorder _usage;
     private readonly ILogger<DocumentProcessor> _logger;
 
     public DocumentProcessor(
@@ -34,6 +35,7 @@ public class DocumentProcessor : IDocumentProcessor
         ITextCleaner cleaner,
         ITextChunker chunker,
         IEmbeddingService embeddings,
+        IUsageRecorder usage,
         ILogger<DocumentProcessor> logger)
     {
         _documents = documents;
@@ -44,6 +46,7 @@ public class DocumentProcessor : IDocumentProcessor
         _cleaner = cleaner;
         _chunker = chunker;
         _embeddings = embeddings;
+        _usage = usage;
         _logger = logger;
     }
 
@@ -101,13 +104,24 @@ public class DocumentProcessor : IDocumentProcessor
             // Embedding happens before anything is saved, so a provider failure leaves the document
             // Failed rather than Completed but unsearchable. The vectors come back in the order the
             // texts went out, which is what makes pairing them by position safe.
-            var vectors = await _embeddings.EmbedBatchAsync(
+            var embedded = await _embeddings.EmbedBatchAsync(
                 [.. chunks.Select(chunk => chunk.Text)], cancellationToken);
 
             for (var index = 0; index < chunks.Count; index++)
             {
-                chunks[index].AttachEmbedding(vectors[index]);
+                chunks[index].AttachEmbedding(embedded.Vectors[index]);
             }
+
+            // Attributed to the document's owner: this runs on a background thread, where there is
+            // no signed-in user to infer it from.
+            await _usage.RecordAsync(
+                document.UserId,
+                UsageKind.Embedding,
+                _embeddings.Model,
+                embedded.TotalTokens,
+                outputTokens: 0,
+                items: chunks.Count,
+                cancellationToken);
 
             await _texts.AddAsync(documentText);
             await _chunks.AddRangeAsync(chunks);
@@ -123,7 +137,7 @@ public class DocumentProcessor : IDocumentProcessor
                 "Processed document {DocumentId}: {Pages} pages, {Words} words, {Chunks} chunks, "
                     + "{Vectors} vectors of {Dimensions} dimensions",
                 documentId, documentText.PageCount, documentText.WordCount, chunks.Count,
-                vectors.Count, _embeddings.Dimensions);
+                embedded.Vectors.Count, _embeddings.Dimensions);
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {

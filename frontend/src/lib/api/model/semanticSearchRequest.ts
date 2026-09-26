@@ -6,16 +6,8 @@
  */
 
 export interface SemanticSearchRequest {
-  /**
-     * @minLength 3
-     * @maxLength 2000
-     */
   query: string;
-  /**
-     * @minimum 1
-     * @maximum 50
-     * @nullable
-     */
+  /** @nullable */
   topK?: number | null;
   /** @nullable */
   documentId?: string | null;
