@@ -45,12 +45,32 @@ public class CloudinaryFileStorageService : IFileStorageService
     }
 
     /// <summary>
-    /// Streams the asset back from Cloudinary. The storage key is the public id; the delivery URL
-    /// is derived from it so a moved account or renamed cloud does not invalidate stored rows.
+    /// Streams the asset back from Cloudinary, through the credentialed download API rather than a
+    /// delivery URL.
+    ///
+    /// Cloudinary accounts restrict the delivery of PDFs, so <c>res.cloudinary.com</c> answers 401
+    /// for one — signed URLs included. Asking as the account instead works with that restriction
+    /// rather than against it, and it is what a document store should do anyway: the file is never
+    /// reachable by URL alone, so a link that escapes into a log or a browser history is not enough
+    /// to read someone's document.
     /// </summary>
     public async Task<Stream> OpenAsync(string storageKey, CancellationToken cancellationToken = default)
     {
-        var url = $"https://res.cloudinary.com/{_options.CloudName}/{ResourceType}/upload/{storageKey}";
+        // Signed the same way as an upload ticket: sorted parameters, joined, secret appended.
+        var parameters = new SortedDictionary<string, object>
+        {
+            ["public_id"] = storageKey,
+            ["timestamp"] = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
+            ["type"] = "upload"
+        };
+
+        var query = string.Join(
+            '&',
+            parameters.Select(p => $"{p.Key}={Uri.EscapeDataString(p.Value.ToString()!)}"));
+
+        var url =
+            $"https://api.cloudinary.com/v1_1/{_options.CloudName}/{ResourceType}/download" +
+            $"?{query}&signature={_cloudinary.Api.SignParameters(parameters)}&api_key={_options.ApiKey}";
 
         var client = _httpClientFactory.CreateClient(nameof(CloudinaryFileStorageService));
         var response = await client.GetAsync(url, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
@@ -62,12 +82,16 @@ public class CloudinaryFileStorageService : IFileStorageService
 
         if (!response.IsSuccessStatusCode)
         {
-            // A 401 here usually means the account restricts raw/PDF delivery — a setting in the
-            // Cloudinary console, not a bug in this code.
+            // Cloudinary explains a refused delivery in the body — "Invalid signature", "Restricted
+            // media type" and so on. Without it the status alone sends you guessing, and the body
+            // carries no credential of ours, only its opinion of the request.
+            var reason = await response.Content.ReadAsStringAsync(cancellationToken);
+
             _logger.LogError(
-                "Cloudinary returned {Status} fetching {StorageKey}. If this is 401, check that " +
-                "raw/PDF delivery is enabled for the account.",
-                (int)response.StatusCode, storageKey);
+                "Cloudinary returned {Status} fetching {StorageKey}: {Reason}",
+                (int)response.StatusCode, storageKey, reason.Trim().Length > 0
+                    ? reason.Trim()[..Math.Min(200, reason.Trim().Length)]
+                    : "(no body)");
 
             throw new InvalidOperationException(
                 $"Cloudinary returned {(int)response.StatusCode} for '{storageKey}'.");
