@@ -1206,6 +1206,45 @@
           }
         }
       }
+    },
+    "/api/Usage": {
+      "get": {
+        "tags": [
+          "Usage"
+        ],
+        "parameters": [
+          {
+            "name": "since",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UsageResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -1217,8 +1256,6 @@
         "type": "object",
         "properties": {
           "question": {
-            "maxLength": 2000,
-            "minLength": 3,
             "type": "string"
           }
         }
@@ -1254,8 +1291,6 @@
             "type": "string"
           },
           "newPassword": {
-            "maxLength": 128,
-            "minLength": 8,
             "type": "string"
           }
         }
@@ -1347,6 +1382,7 @@
           "id",
           "role",
           "content",
+          "stopped",
           "inputTokens",
           "outputTokens",
           "createdAt",
@@ -1376,6 +1412,9 @@
               "string"
             ]
           },
+          "stopped": {
+            "type": "boolean"
+          },
           "inputTokens": {
             "type": "integer",
             "format": "int32"
@@ -1404,13 +1443,9 @@
         "type": "object",
         "properties": {
           "publicId": {
-            "maxLength": 400,
-            "minLength": 0,
             "type": "string"
           },
           "fileName": {
-            "maxLength": 260,
-            "minLength": 1,
             "type": "string"
           }
         }
@@ -1502,8 +1537,6 @@
         "type": "object",
         "properties": {
           "question": {
-            "maxLength": 2000,
-            "minLength": 3,
             "type": "string"
           }
         }
@@ -1837,18 +1870,12 @@
         "type": "object",
         "properties": {
           "name": {
-            "maxLength": 120,
-            "minLength": 2,
             "type": "string"
           },
           "email": {
-            "maxLength": 256,
-            "minLength": 0,
             "type": "string"
           },
           "password": {
-            "maxLength": 128,
-            "minLength": 8,
             "type": "string"
           }
         }
@@ -1900,13 +1927,9 @@
         "type": "object",
         "properties": {
           "query": {
-            "maxLength": 2000,
-            "minLength": 3,
             "type": "string"
           },
           "topK": {
-            "maximum": 50,
-            "minimum": 1,
             "type": [
               "null",
               "integer"
@@ -1946,9 +1969,6 @@
         }
       },
       "StartConversationRequest": {
-        "required": [
-          "documentId"
-        ],
         "type": "object",
         "properties": {
           "documentId": {
@@ -1956,8 +1976,6 @@
             "format": "uuid"
           },
           "question": {
-            "maxLength": 2000,
-            "minLength": 3,
             "type": [
               "null",
               "string"
@@ -1972,8 +1990,6 @@
         "type": "object",
         "properties": {
           "name": {
-            "maxLength": 120,
-            "minLength": 2,
             "type": "string"
           }
         }
@@ -1985,13 +2001,9 @@
         "type": "object",
         "properties": {
           "fileName": {
-            "maxLength": 260,
-            "minLength": 1,
             "type": "string"
           },
           "fileSize": {
-            "maximum": 9223372036854776000,
-            "minimum": 1,
             "type": "integer",
             "format": "int64"
           }
@@ -2031,6 +2043,43 @@
           "maxFileSizeBytes": {
             "type": "integer",
             "format": "int64"
+          }
+        }
+      },
+      "UsageResponse": {
+        "required": [
+          "since",
+          "embeddingCalls",
+          "embeddingInputTokens",
+          "chatCalls",
+          "chatInputTokens",
+          "chatOutputTokens"
+        ],
+        "type": "object",
+        "properties": {
+          "since": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "embeddingCalls": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "embeddingInputTokens": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "chatCalls": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "chatInputTokens": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "chatOutputTokens": {
+            "type": "integer",
+            "format": "int32"
           }
         }
       },
@@ -2079,6 +2128,9 @@
     },
     {
       "name": "Search"
+    },
+    {
+      "name": "Usage"
     }
   ]
 }

@@ -1,8 +1,10 @@
 using System.Text.Json;
+using DocuMind.Api.Extensions;
 using DocuMind.Application.DTOs.Conversations;
 using DocuMind.Application.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace DocuMind.Api.Controllers;
 
@@ -100,6 +102,7 @@ public class ConversationsController : ControllerBase
     /// generated client would expect, so the browser calls it directly.
     /// </summary>
     [HttpPost("{id:guid}/messages/stream")]
+    [EnableRateLimiting(HardeningExtensions.AiPolicy)]
     [ApiExplorerSettings(IgnoreApi = true)]
     public async Task StreamAsk(
         Guid id,
@@ -151,6 +154,7 @@ public class ConversationsController : ControllerBase
     /// write a message as the assistant and have it replayed as history on later questions.
     /// </summary>
     [HttpPost("{id:guid}/messages")]
+    [EnableRateLimiting(HardeningExtensions.AiPolicy)]
     [ProducesResponseType(typeof(ChatMessageResponse), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]

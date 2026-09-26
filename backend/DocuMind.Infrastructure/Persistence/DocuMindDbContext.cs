@@ -28,6 +28,8 @@ public class DocuMindDbContext : DbContext
 
     public DbSet<MessageSource> MessageSources => Set<MessageSource>();
 
+    public DbSet<UsageRecord> UsageRecords => Set<UsageRecord>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         // Declared on the model so the migration installs it. Vector columns, the <=> operator and

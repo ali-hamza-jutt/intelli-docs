@@ -8,11 +8,10 @@ public class SemanticSearchRequest
     /// What to look for, in the user's own words. The lower bound rejects a stray keystroke, which
     /// would otherwise cost an embedding call and return whatever happened to be least unrelated.
     /// </summary>
-    [Required, StringLength(2000, MinimumLength = 3)]
+    [Required]
     public string Query { get; set; } = string.Empty;
 
     /// <summary>How many passages to return. The configured default when omitted.</summary>
-    [Range(1, 50)]
     public int? TopK { get; set; }
 
     /// <summary>Restricts the search to one document. All of the caller's documents when omitted.</summary>

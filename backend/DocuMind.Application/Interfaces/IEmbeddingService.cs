@@ -27,10 +27,19 @@ public interface IEmbeddingService
     /// Embeds many texts in as few provider calls as possible. The result has one vector per input,
     /// in the same order, so callers can pair it back to whatever the texts came from by position.
     /// </summary>
-    Task<IReadOnlyList<float[]>> EmbedBatchAsync(
+    Task<EmbeddingBatch> EmbedBatchAsync(
         IReadOnlyList<string> texts,
         CancellationToken cancellationToken = default);
 }
+
+/// <summary>
+/// The vectors, with what the provider said the call cost.
+/// </summary>
+/// <param name="TotalTokens">
+/// As reported by the provider, summed over however many requests the batch took. Zero if it did not
+/// report any — recorded as zero rather than estimated, because usage is billing, not a guess.
+/// </param>
+public record EmbeddingBatch(IReadOnlyList<float[]> Vectors, int TotalTokens);
 
 // A provider that is unreachable, rate limiting, or unconfigured throws AiUnavailableAppException,
 // which every AI service shares and the API turns into a 503.

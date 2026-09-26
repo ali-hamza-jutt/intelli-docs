@@ -78,18 +78,18 @@ public class OpenAIEmbeddingService : IEmbeddingService
 
     public async Task<float[]> EmbedAsync(string text, CancellationToken cancellationToken = default)
     {
-        var vectors = await EmbedBatchAsync([text], cancellationToken);
+        var batch = await EmbedBatchAsync([text], cancellationToken);
 
-        return vectors[0];
+        return batch.Vectors[0];
     }
 
-    public async Task<IReadOnlyList<float[]>> EmbedBatchAsync(
+    public async Task<EmbeddingBatch> EmbedBatchAsync(
         IReadOnlyList<string> texts,
         CancellationToken cancellationToken = default)
     {
         if (texts.Count == 0)
         {
-            return [];
+            return new EmbeddingBatch([], 0);
         }
 
         var inputs = texts.Select(Prepare).ToArray();
@@ -126,7 +126,7 @@ public class OpenAIEmbeddingService : IEmbeddingService
             "Embedded {Texts} texts in {Requests} request(s) using {Model} ({Dimensions}d), {Tokens} tokens",
             inputs.Length, requests, Model, Dimensions, tokensUsed);
 
-        return vectors;
+        return new EmbeddingBatch(vectors, tokensUsed);
     }
 
     // ------------------------------------------------------------------ batching
@@ -211,10 +211,10 @@ public class OpenAIEmbeddingService : IEmbeddingService
         }
         catch (ClientResultException ex)
         {
-            // The provider's own body can name the account or the model, so it is logged rather
-            // than returned to the caller.
+            // Status only, without the exception: a rejection body quotes the API key it
+            // rejected, and a log is exactly the wrong place for that.
             _logger.LogError(
-                ex, "The AI provider rejected an embedding request with status {Status}", ex.Status);
+                "The AI provider rejected an embedding request with status {Status}", ex.Status);
 
             throw new AiUnavailableAppException(Describe(ex.Status));
         }

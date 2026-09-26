@@ -4,3 +4,4 @@ export * from './documents/documents';
 export * from './documind-api/documind-api';
 export * from './health/health';
 export * from './search/search';
+export * from './usage/usage';

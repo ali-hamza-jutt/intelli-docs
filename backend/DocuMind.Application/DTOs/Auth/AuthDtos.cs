@@ -4,19 +4,19 @@ namespace DocuMind.Application.DTOs.Auth;
 
 public class RegisterRequest
 {
-    [Required, StringLength(120, MinimumLength = 2)]
+    [Required]
     public string Name { get; set; } = string.Empty;
 
-    [Required, EmailAddress, StringLength(256)]
+    [Required]
     public string Email { get; set; } = string.Empty;
 
-    [Required, StringLength(128, MinimumLength = 8)]
+    [Required]
     public string Password { get; set; } = string.Empty;
 }
 
 public class LoginRequest
 {
-    [Required, EmailAddress]
+    [Required]
     public string Email { get; set; } = string.Empty;
 
     [Required]
@@ -28,13 +28,13 @@ public class ChangePasswordRequest
     [Required]
     public string CurrentPassword { get; set; } = string.Empty;
 
-    [Required, StringLength(128, MinimumLength = 8)]
+    [Required]
     public string NewPassword { get; set; } = string.Empty;
 }
 
 public class UpdateProfileRequest
 {
-    [Required, StringLength(120, MinimumLength = 2)]
+    [Required]
     public string Name { get; set; } = string.Empty;
 }
 

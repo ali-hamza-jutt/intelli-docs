@@ -2,6 +2,7 @@ using System.Runtime.CompilerServices;
 using System.Text;
 using System.Text.RegularExpressions;
 using DocuMind.Application.Interfaces;
+using DocuMind.Domain.Entities;
 using DocuMind.Infrastructure.Chunking;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -26,6 +27,7 @@ public partial class RagService : IRagService
     private readonly IVectorSearchService _search;
     private readonly IPromptBuilder _prompts;
     private readonly ILLMService _llm;
+    private readonly IUsageRecorder _usage;
     private readonly RetrievalOptions _options;
     private readonly ILogger<RagService> _logger;
 
@@ -33,12 +35,14 @@ public partial class RagService : IRagService
         IVectorSearchService search,
         IPromptBuilder prompts,
         ILLMService llm,
+        IUsageRecorder usage,
         IOptions<RetrievalOptions> options,
         ILogger<RagService> logger)
     {
         _search = search;
         _prompts = prompts;
         _llm = llm;
+        _usage = usage;
         _options = options.Value;
         _logger = logger;
     }
@@ -71,6 +75,8 @@ public partial class RagService : IRagService
         var prompt = _prompts.BuildAnswerPrompt(question, passages, recent);
         var completion = await _llm.CompleteAsync(prompt, cancellationToken);
         var citations = CitationsIn(completion.Text, passages);
+
+        await RecordAsync(userId, completion.InputTokens, completion.OutputTokens, cancellationToken);
 
         _logger.LogInformation(
             "Answered from {Passages} passages, {Cited} of them cited",
@@ -143,8 +149,33 @@ public partial class RagService : IRagService
             "Streamed an answer from {Passages} passages, {Cited} of them cited",
             passages.Count, citations.Count);
 
+        // Only reached when the answer finished. A stopped stream abandons this iterator, so its
+        // partial cost goes unrecorded — the provider does not report usage for a call it never
+        // completed, and inventing a number would be worse than the gap.
+        await RecordAsync(userId, inputTokens, outputTokens, cancellationToken);
+
         yield return new RagStreamEvent.Final(new RagAnswer(
             question, text, Grounded: true, citations, _llm.Model, inputTokens, outputTokens));
+    }
+
+    /// <summary>
+    /// Books the answer against the user who asked for it. Both paths — waiting for the whole answer
+    /// and streaming it — end here, so chat spending is recorded in one place.
+    /// </summary>
+    private async Task RecordAsync(
+        Guid userId,
+        int inputTokens,
+        int outputTokens,
+        CancellationToken cancellationToken)
+    {
+        await _usage.RecordAsync(
+            userId,
+            UsageKind.Chat,
+            _llm.Model,
+            inputTokens,
+            outputTokens,
+            items: 1,
+            cancellationToken);
     }
 
     /// <summary>

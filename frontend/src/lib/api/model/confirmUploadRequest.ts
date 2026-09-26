@@ -6,14 +6,6 @@
  */
 
 export interface ConfirmUploadRequest {
-  /**
-     * @minLength 0
-     * @maxLength 400
-     */
   publicId: string;
-  /**
-     * @minLength 1
-     * @maxLength 260
-     */
   fileName: string;
 }

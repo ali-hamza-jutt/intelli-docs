@@ -78,7 +78,8 @@ public class OpenAILLMService : ILLMService
         }
         catch (ClientResultException ex)
         {
-            _logger.LogError(ex, "The AI provider rejected a chat request with status {Status}", ex.Status);
+            // Status only: a rejection body quotes the API key it rejected.
+            _logger.LogError("The AI provider rejected a chat request with status {Status}", ex.Status);
 
             throw new AiUnavailableAppException(Describe(ex.Status));
         }
@@ -125,7 +126,7 @@ public class OpenAILLMService : ILLMService
             catch (ClientResultException ex)
             {
                 _logger.LogError(
-                    ex, "The AI provider rejected a streaming chat request with status {Status}", ex.Status);
+                    "The AI provider rejected a streaming chat request with status {Status}", ex.Status);
 
                 throw new AiUnavailableAppException(Describe(ex.Status));
             }

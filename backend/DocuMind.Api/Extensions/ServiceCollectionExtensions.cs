@@ -50,6 +50,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IDocumentTextRepository, DocumentTextRepository>();
         services.AddScoped<IDocumentChunkRepository, DocumentChunkRepository>();
         services.AddScoped<IConversationRepository, ConversationRepository>();
+        services.AddScoped<IUsageRecorder, UsageRecorder>();
 
         return services;
     }

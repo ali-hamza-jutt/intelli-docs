@@ -1,7 +1,9 @@
+using DocuMind.Api.Extensions;
 using DocuMind.Application.DTOs.Search;
 using DocuMind.Application.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace DocuMind.Api.Controllers;
 
@@ -27,6 +29,7 @@ public class SearchController : ControllerBase
     /// URL that gets logged and cached.
     /// </summary>
     [HttpPost("semantic")]
+    [EnableRateLimiting(HardeningExtensions.AiPolicy)]
     [ProducesResponseType(typeof(SemanticSearchResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]

@@ -6,11 +6,7 @@
  */
 
 export interface StartConversationRequest {
-  documentId: string;
-  /**
-     * @minLength 3
-     * @maxLength 2000
-     * @nullable
-     */
+  documentId?: string;
+  /** @nullable */
   question?: string | null;
 }

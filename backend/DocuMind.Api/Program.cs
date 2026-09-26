@@ -6,6 +6,8 @@ using Microsoft.AspNetCore.Mvc;
 
 var builder = WebApplication.CreateBuilder(args);
 
+builder.AddStructuredLogging();
+
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
 
@@ -20,7 +22,10 @@ builder.Services.AddSpaCors(builder.Configuration);
 // Restricting to JSON keeps the OpenAPI document (and the generated client) free of
 // text/plain and text/json duplicates of every response type.
 builder.Services.AddControllers(options =>
-        options.Filters.Add(new ProducesAttribute("application/json")))
+    {
+        options.Filters.Add(new ProducesAttribute("application/json"));
+        options.Filters.Add<ValidationFilter>();
+    })
     // ASP.NET Core's web defaults accept numbers sent as strings ("42"), and the OpenAPI document
     // faithfully describes every integer as "integer or string". The generated client then types
     // them all as number | string, where a + b can silently concatenate. Numbers are numbers.
@@ -32,11 +37,23 @@ builder.Services.ConfigureHttpJsonOptions(options =>
     options.SerializerOptions.NumberHandling = JsonNumberHandling.Strict);
 
 builder.Services.AddConsistentValidationErrors();
+builder.Services.AddEndpointRateLimits();
+
+// The ProblemDetails writer that the exception handler, the rate limiter and every bare status
+// result answer with. The enrichment is what makes those three indistinguishable to a client: a
+// 404 returned by a controller carries the same code and the same readable detail as one thrown
+// from a service, so nothing has to understand two shapes of the same failure.
+builder.Services.AddProblemDetails(options =>
+    options.CustomizeProblemDetails = ProblemDetailsDefaults.Apply);
+
+builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 
 var app = builder.Build();
 
-// First in the pipeline so it can catch anything thrown further down.
-app.UseMiddleware<ExceptionHandlingMiddleware>();
+// First in the pipeline, so it catches anything thrown further down and nothing internal escapes.
+app.UseExceptionHandler();
+
+app.UseRequestLogging();
 
 if (app.Environment.IsDevelopment())
 {
@@ -58,6 +75,10 @@ app.UseCors(ServiceCollectionExtensions.SpaCorsPolicy);
 // Order matters: authentication populates the principal, authorization then inspects it.
 app.UseAuthentication();
 app.UseAuthorization();
+
+// After authentication: the limiter partitions by user id, which only exists once the token has
+// been read.
+app.UseRateLimiter();
 
 app.MapControllers();
 
