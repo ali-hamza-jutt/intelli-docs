@@ -1,6 +1,6 @@
 import { Icon, type IconName } from "./Icon";
 
-/** Shared "nothing here yet" panel for documents and collections. */
+/** Shared "nothing here yet" panel. */
 export function EmptyState({
   icon,
   title,

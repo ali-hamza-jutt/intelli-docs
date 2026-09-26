@@ -13,7 +13,6 @@ export const PRIMARY_NAV: { href: string; label: string; icon: IconName }[] = [
   { href: "/dashboard", label: "Dashboard", icon: "grid" },
   { href: "/documents", label: "Documents", icon: "fileText" },
   { href: "/chat", label: "Chat", icon: "message" },
-  { href: "/collections", label: "Collections", icon: "folder" },
 ];
 
 const SECONDARY_NAV: { href: string; label: string; icon: IconName }[] = [

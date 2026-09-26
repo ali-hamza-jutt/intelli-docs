@@ -8,13 +8,16 @@ import { Avatar } from "@/components/ui/Avatar";
 import { Field } from "@/components/ui/Field";
 import { Icon } from "@/components/ui/Icon";
 import { Tabs } from "@/components/ui/Tabs";
+import { SkeletonRows } from "@/components/ui/Skeleton";
 import {
   usePutApiAuthMe,
   usePostApiAuthChangePassword,
 } from "@/lib/api/generated/auth/auth";
+import { useGetApiUsage } from "@/lib/api/generated/usage/usage";
 import { ApiError } from "@/lib/api/client";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { initialsFor } from "@/lib/auth/initials";
+import { formatDate } from "@/lib/format";
 import { useToast } from "@/components/ui/Toast";
 
 /*
@@ -25,7 +28,89 @@ import { useToast } from "@/components/ui/Toast";
  * control that silently does nothing is worse than one that is not there: it teaches people the app
  * lies. They come back when there is something to save them to.
  */
-const TABS = ["Profile", "Security"] as const;
+const TABS = ["Profile", "Security", "Usage"] as const;
+
+/** One number with its label, as the dashboard shows its counts. */
+function Stat({ label, value, hint }: { label: string; value: string; hint?: string }) {
+  return (
+    <div>
+      <p className="m-0 text-tiny text-subtle">{label}</p>
+      <p className="mt-0.5 mb-0 text-xl font-bold tracking-[-0.02em] tabular-nums">{value}</p>
+      {hint && <p className="mt-0.5 mb-0 text-tiny text-subtle">{hint}</p>}
+    </div>
+  );
+}
+
+/**
+ * What this account has spent at the AI provider this month.
+ *
+ * Tokens rather than money: the price per token depends on the provider and the plan, and a
+ * figure in dollars would quietly go stale. This is the measure the server actually records.
+ */
+function UsageTab() {
+  const usage = useGetApiUsage();
+
+  if (usage.isPending) {
+    return (
+      <Card className="p-[22px] animate-fade-in">
+        <SkeletonRows count={3} />
+      </Card>
+    );
+  }
+
+  if (usage.isError || !usage.data) {
+    return (
+      <Card className="p-[22px] animate-fade-in">
+        <p className="m-0 text-body text-muted">Could not load your usage just now.</p>
+      </Card>
+    );
+  }
+
+  const { since, chatCalls, chatInputTokens, chatOutputTokens, embeddingCalls, embeddingInputTokens } =
+    usage.data;
+
+  // Some providers report no token counts for embeddings. Saying so beats showing a zero that
+  // reads as "no work done".
+  const embeddingTokens = embeddingInputTokens > 0
+    ? `${embeddingInputTokens.toLocaleString()} tokens read`
+    : "tokens not reported by the provider";
+
+  return (
+    <Card className="p-[22px] animate-fade-in">
+      <h3 className="mb-1 card-title">This month</h3>
+      <p className="mt-0 mb-5 text-small text-muted">Since {formatDate(since)}.</p>
+
+      <div className="grid gap-5 [grid-template-columns:repeat(auto-fit,minmax(150px,1fr))]">
+        <Stat label="Questions answered" value={chatCalls.toLocaleString()} />
+        <Stat
+          label="Tokens read"
+          value={chatInputTokens.toLocaleString()}
+          hint="your documents and question"
+        />
+        <Stat
+          label="Tokens written"
+          value={chatOutputTokens.toLocaleString()}
+          hint="the answers themselves"
+        />
+        <Stat
+          label="Documents indexed"
+          value={embeddingCalls.toLocaleString()}
+          hint={embeddingTokens}
+        />
+      </div>
+
+      <div className="divider my-5.5" />
+
+      <div className="flex items-start gap-2.5 text-small text-muted">
+        <Icon name="sparkles" className="mt-0.5 flex-none text-md text-subtle" />
+        <p className="m-0">
+          A question costs roughly the passages it is answered from plus the answer. Asking about a
+          document your library does not cover costs nothing at all — nothing is sent to the model.
+        </p>
+      </div>
+    </Card>
+  );
+}
 
 export default function SettingsPage() {
   const [tab, setTab] = useState<string>("Profile");
@@ -181,6 +266,8 @@ export default function SettingsPage() {
           </div>
         </Card>
       )}
+
+      {tab === "Usage" && <UsageTab />}
     </div>
   );
 }
