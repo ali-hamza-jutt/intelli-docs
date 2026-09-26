@@ -1,9 +1,12 @@
 import type { IconName } from "@/components/ui/Icon";
 
 /* ============================================================================
-   Placeholder data for the parts of the UI that have no API yet: saved
-   conversations, collections and settings preferences. Documents, answers and
-   the signed-in user now come from the backend.
+   What is left of the placeholder data.
+
+   Collections is the one screen with no API behind it. The rest here is static
+   by nature: the suggested questions and the document action list are copy, not
+   data. Documents, conversations, answers, settings and the signed-in user all
+   come from the backend.
    ========================================================================= */
 
 export const SUGGESTIONS = [
@@ -35,14 +38,5 @@ export const DOCUMENT_ACTIONS: { label: string; icon: IconName }[] = [
   { label: "Find important sections", icon: "search" },
 ];
 
-export const PREFERENCE_TOGGLES = [
-  { label: "Always show sources with answers", on: true },
-  { label: "Prefer concise answers", on: false },
-  { label: "Stream responses as they are generated", on: true },
-];
 
-export const SESSIONS = [
-  { device: "MacBook Pro — Berlin", meta: "Current session · Chrome", action: "This device", current: true },
-  { device: "iPhone 15 — Berlin", meta: "Last active 3 hours ago", action: "Revoke", current: false },
-];
 

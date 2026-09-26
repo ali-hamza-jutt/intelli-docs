@@ -127,13 +127,10 @@ export function AuthForm({
           />
         ))}
 
+        {/* No endpoint sends a reset email, so there is no "Forgot password?" link to offer. The
+            screens for it stay in the repo, unlinked, until there is something behind them. */}
         {config.showRemember && (
-          <div className="flex items-center justify-between gap-3">
-            <Checkbox label="Remember me" defaultChecked disabled={isPending} />
-            <Link href="/forgot-password" className="link-action text-body">
-              Forgot password?
-            </Link>
-          </div>
+          <Checkbox label="Remember me" defaultChecked disabled={isPending} />
         )}
 
         {config.showTerms && (
