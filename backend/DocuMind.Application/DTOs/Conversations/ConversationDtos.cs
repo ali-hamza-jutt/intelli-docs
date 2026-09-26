@@ -71,6 +71,12 @@ public class ChatMessageResponse
 
     public string? Model { get; set; }
 
+    /// <summary>
+    /// True when the reader stopped this answer part-way, so its text is incomplete and its model
+    /// and token counts are unknown.
+    /// </summary>
+    public required bool Stopped { get; set; }
+
     public required int InputTokens { get; set; }
 
     public required int OutputTokens { get; set; }

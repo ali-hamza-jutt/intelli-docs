@@ -3,6 +3,7 @@ using System;
 using DocuMind.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using Pgvector;
@@ -12,9 +13,11 @@ using Pgvector;
 namespace DocuMind.Infrastructure.Migrations
 {
     [DbContext(typeof(DocuMindDbContext))]
-    partial class DocuMindDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260925150318_AddStoppedAnswerFlag")]
+    partial class AddStoppedAnswerFlag
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -58,10 +61,10 @@ namespace DocuMind.Infrastructure.Migrations
                         .HasMaxLength(20)
                         .HasColumnType("character varying(20)");
 
-                    b.HasKey("Id");
                     b.Property<bool>("Stopped")
                         .HasColumnType("boolean");
 
+                    b.HasKey("Id");
 
                     b.HasIndex("ConversationId", "CreatedAt");
 

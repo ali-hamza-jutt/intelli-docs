@@ -1,3 +1,5 @@
+using System.Runtime.CompilerServices;
+using System.Text;
 using DocuMind.Application.Common;
 using DocuMind.Application.DTOs.Conversations;
 using DocuMind.Application.Interfaces;
@@ -143,6 +145,124 @@ public class ConversationService : IConversationService
         return ToResponse(await AnswerAsync(conversation, request.Question, cancellationToken));
     }
 
+    public async IAsyncEnumerable<ConversationStreamEvent> StreamAskAsync(
+        Guid id,
+        AskInConversationRequest request,
+        [EnumeratorCancellation] CancellationToken cancellationToken = default)
+    {
+        var conversation = await _conversations.GetAsync(
+            id, _currentUser.RequireUserId(), cancellationToken);
+
+        if (conversation is null)
+        {
+            // Thrown before the first event, while the response can still be a plain 404.
+            throw new NotFoundAppException("This conversation does not exist.");
+        }
+
+        var history = await _conversations.GetRecentMessagesAsync(
+            conversation.Id, _rag.MaxHistoryMessages, cancellationToken);
+
+        await _conversations.AddMessageAsync(
+            conversation.AskedBy(request.Question, history.Count == 0));
+
+        var answer = new StringBuilder();
+        var citations = new List<RagCitation>();
+
+        // Starts true and is corrected by the final event, which is the only thing that reports a
+        // question nothing matched. A stopped answer never gets that event, and it was being written
+        // from passages — marking it ungrounded would claim the opposite of what happened.
+        var grounded = true;
+        var inputTokens = 0;
+        var outputTokens = 0;
+        var stopped = false;
+        string? model = null;
+
+        var stream = _rag.StreamAsync(
+            conversation.UserId,
+            request.Question,
+            conversation.DocumentId,
+            [.. history.Select(message => new RagTurn(message.Role == MessageRole.User, message.Content))],
+            cancellationToken);
+
+        // Enumerated by hand so that cancellation can be caught: a yield cannot sit inside a
+        // try/catch, and cancellation here is a normal outcome that still has to be saved.
+        await using var events = stream.GetAsyncEnumerator(cancellationToken);
+
+        while (true)
+        {
+            try
+            {
+                if (!await events.MoveNextAsync())
+                {
+                    break;
+                }
+            }
+            catch (OperationCanceledException)
+            {
+                stopped = true;
+                break;
+            }
+
+            switch (events.Current)
+            {
+                case RagStreamEvent.Delta delta:
+                    answer.Append(delta.Text);
+                    yield return new ConversationStreamEvent.Delta(delta.Text);
+                    break;
+
+                case RagStreamEvent.Final final:
+                    grounded = final.Answer.Grounded;
+                    citations = [.. final.Answer.Citations];
+                    model = final.Answer.Model;
+                    inputTokens = final.Answer.InputTokens;
+                    outputTokens = final.Answer.OutputTokens;
+                    break;
+            }
+        }
+
+        var text = answer.ToString().Trim();
+
+        if (text.Length == 0)
+        {
+            // Stopped before a single word arrived: there is no answer to keep, and a question with
+            // no answer would be worse than nothing. The whole turn is dropped.
+            _logger.LogInformation("Streamed answer in {ConversationId} stopped before any text", id);
+
+            yield break;
+        }
+
+        // A stopped answer has no final event, so its model and usage are unknown — left null and
+        // zero rather than filled in with a guess. The Stopped flag says why.
+        var message = conversation.AnsweredWith(
+            text, grounded, model, inputTokens, outputTokens, stopped);
+
+        foreach (var citation in citations)
+        {
+            message.Cite(
+                citation.Marker,
+                citation.DocumentId,
+                citation.FileName,
+                citation.PageNumber,
+                citation.EndPageNumber,
+                citation.Text,
+                citation.Similarity);
+        }
+
+        await _conversations.AddMessageAsync(message);
+
+        // Saved with a fresh token: the request's own token is already cancelled in the case this
+        // exists to handle, and the answer has to be stored anyway.
+        await _conversations.SaveChangesAsync(CancellationToken.None);
+
+        if (stopped)
+        {
+            _logger.LogInformation(
+                "Stored a stopped answer of {Characters} characters in {ConversationId}", text.Length, id);
+        }
+
+        yield return new ConversationStreamEvent.Final(ToResponse(message));
+    }
+
     public async Task<bool> DeleteAsync(Guid id, CancellationToken cancellationToken = default)
     {
         var conversation = await _conversations.GetAsync(
@@ -214,6 +334,7 @@ public class ConversationService : IConversationService
             Content = message.Content,
             Grounded = message.Grounded,
             Model = message.Model,
+            Stopped = message.Stopped,
             InputTokens = message.InputTokens,
             OutputTokens = message.OutputTokens,
             CreatedAt = message.CreatedAt,

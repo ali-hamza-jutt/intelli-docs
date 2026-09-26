@@ -37,6 +37,13 @@ public class ChatMessage
     /// <summary>The model that wrote an answer, or null on a question or an ungrounded refusal.</summary>
     public string? Model { get; private set; }
 
+    /// <summary>
+    /// True when the reader stopped the answer part-way. Recorded because the text is genuinely
+    /// incomplete: it is shown as cut off, and it is replayed as history in that state rather than
+    /// passed off as something the model finished saying.
+    /// </summary>
+    public bool Stopped { get; private set; }
+
     public int InputTokens { get; private set; }
 
     public int OutputTokens { get; private set; }
@@ -56,7 +63,8 @@ public class ChatMessage
         bool grounded,
         string? model,
         int inputTokens,
-        int outputTokens)
+        int outputTokens,
+        bool stopped)
     {
         var message = Create(conversationId, MessageRole.Assistant, answer);
 
@@ -64,6 +72,7 @@ public class ChatMessage
         message.Model = model;
         message.InputTokens = inputTokens;
         message.OutputTokens = outputTokens;
+        message.Stopped = stopped;
 
         return message;
     }

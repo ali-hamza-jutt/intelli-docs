@@ -71,14 +71,17 @@ public class Conversation
     }
 
     /// <summary>Records an answer. Sources are attached to the message, not to the thread.</summary>
+    /// <param name="stopped">True when the reader cut the answer short, so the text is partial.</param>
     public ChatMessage AnsweredWith(
         string answer,
         bool grounded,
         string? model,
         int inputTokens,
-        int outputTokens)
+        int outputTokens,
+        bool stopped = false)
     {
-        return Add(ChatMessage.FromAssistant(Id, answer, grounded, model, inputTokens, outputTokens));
+        return Add(ChatMessage.FromAssistant(
+            Id, answer, grounded, model, inputTokens, outputTokens, stopped));
     }
 
     private ChatMessage Add(ChatMessage message)

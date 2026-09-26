@@ -7,6 +7,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Icon } from "@/components/ui/Icon";
 import {
   AssistantMessage,
+  StreamingMessage,
   ThinkingIndicator,
   UserMessage,
 } from "@/components/chat/ChatMessage";
@@ -19,12 +20,12 @@ import {
   useGetApiConversations,
   useGetApiConversationsId,
   usePostApiConversations,
-  usePostApiConversationsIdMessages,
   useDeleteApiConversationsId,
   getGetApiConversationsQueryKey,
   getGetApiConversationsIdQueryKey,
 } from "@/lib/api/generated/conversations/conversations";
 import { ApiError } from "@/lib/api/client";
+import { streamAnswer } from "@/lib/api/stream";
 import { SUGGESTIONS } from "@/lib/data";
 import { useToast } from "@/components/ui/Toast";
 import type { MessageSourceResponse } from "@/lib/api/model";
@@ -49,7 +50,14 @@ function ChatScreen() {
   // comes back holding it. Nothing is kept in two places for longer than one round trip.
   const [pendingQuestion, setPendingQuestion] = useState<string | null>(null);
 
+  // The answer as it arrives. Null until the first piece of text, so the wait before it reads as
+  // "searching" rather than as an empty answer.
+  const [streamingAnswer, setStreamingAnswer] = useState<string | null>(null);
+
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  /** Held so Stop can abort the request the answer is arriving on. */
+  const streamRef = useRef<AbortController | null>(null);
 
   const conversations = useGetApiConversations();
   const documents = useGetApiDocuments();
@@ -60,10 +68,11 @@ function ChatScreen() {
   });
 
   const start = usePostApiConversations();
-  const ask = usePostApiConversationsIdMessages();
   const remove = useDeleteApiConversationsId();
 
-  const pending = start.isPending || ask.isPending;
+  // Pending covers the whole exchange: creating the thread, the wait before the first word, and the
+  // answer still arriving.
+  const pending = start.isPending || pendingQuestion !== null;
   const messages = conversation.data?.messages ?? [];
   const activeDocumentId = conversation.data?.documentId ?? documentId;
 
@@ -71,6 +80,7 @@ function ChatScreen() {
     (id: string) => {
       setOpenSource(null);
       setPendingQuestion(null);
+      setStreamingAnswer(null);
       router.replace(`${pathname}?c=${id}`);
     },
     [pathname, router],
@@ -94,7 +104,7 @@ function ChatScreen() {
   );
 
   const send = useCallback(
-    (text: string) => {
+    async (text: string) => {
       const question = text.trim();
 
       if (!question || pending) return;
@@ -107,38 +117,59 @@ function ChatScreen() {
       setDraft("");
       setOpenSource(null);
       setPendingQuestion(question);
+      setStreamingAnswer(null);
 
-      if (conversationId) {
-        ask.mutate(
-          { id: conversationId, data: { question } },
-          {
-            onSuccess: () => {
-              setPendingQuestion(null);
-              refreshThread(conversationId);
-            },
-            onError: (error) => failed(error, question),
-          },
-        );
+      const controller = new AbortController();
+      streamRef.current = controller;
 
-        return;
+      try {
+        // A thread has to exist before an answer can be streamed into it, so the first question
+        // creates an empty one. It is created without a question so that this answer streams too,
+        // rather than the first one arriving all at once.
+        const threadId =
+          conversationId ?? (await start.mutateAsync({ data: { documentId: documentId! } })).id;
+
+        if (!conversationId) {
+          router.replace(`${pathname}?c=${threadId}`);
+        }
+
+        await streamAnswer({
+          conversationId: threadId,
+          question,
+          signal: controller.signal,
+          onDelta: (piece) => setStreamingAnswer((sofar) => (sofar ?? "") + piece),
+          onFinal: () => undefined,
+        });
+
+        // The stored thread is the source of truth; what was rendered while streaming is dropped
+        // in favour of it, sources and all.
+        setPendingQuestion(null);
+        setStreamingAnswer(null);
+        refreshThread(threadId);
+      } catch (error) {
+        if (error instanceof DOMException && error.name === "AbortError") {
+          // Stopped on purpose. The server keeps what it had written, so the thread is reloaded
+          // rather than the partial text being left on screen unsaved.
+          setPendingQuestion(null);
+          setStreamingAnswer(null);
+
+          if (conversationId) refreshThread(conversationId);
+
+          return;
+        }
+
+        failed(error, question);
+        setStreamingAnswer(null);
+      } finally {
+        streamRef.current = null;
       }
-
-      // No thread yet: the first question creates one about the chosen document and is answered in
-      // the same request.
-      start.mutate(
-        { data: { documentId: documentId!, question } },
-        {
-          onSuccess: (created) => {
-            setPendingQuestion(null);
-            queryClient.invalidateQueries({ queryKey: getGetApiConversationsQueryKey() });
-            router.replace(`${pathname}?c=${created.id}`);
-          },
-          onError: (error) => failed(error, question),
-        },
-      );
     },
-    [ask, conversationId, documentId, failed, pathname, pending, queryClient, refreshThread, router, start, toast],
+    [conversationId, documentId, failed, pathname, pending, refreshThread, router, start, toast],
   );
+
+  const stop = useCallback(() => {
+    streamRef.current?.abort();
+  }, []);
 
   const deleteConversation = useCallback(
     (id: string) => {
@@ -260,7 +291,13 @@ function ChatScreen() {
               </div>
             )}
 
-            {pending && <ThinkingIndicator />}
+            {streamingAnswer !== null ? (
+              <div className="animate-fade-up">
+                <StreamingMessage text={streamingAnswer} />
+              </div>
+            ) : (
+              pending && <ThinkingIndicator />
+            )}
           </div>
         </div>
 
@@ -269,6 +306,7 @@ function ChatScreen() {
           onChange={setDraft}
           onSubmit={() => send(draft)}
           onAttach={() => setUploadOpen(true)}
+          onStop={stop}
           pending={pending}
           documents={ready}
           documentId={activeDocumentId ?? null}

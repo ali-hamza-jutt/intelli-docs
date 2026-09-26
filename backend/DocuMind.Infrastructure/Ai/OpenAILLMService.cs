@@ -1,4 +1,5 @@
 using System.ClientModel;
+using System.Runtime.CompilerServices;
 using System.ClientModel.Primitives;
 using DocuMind.Application.Common;
 using DocuMind.Application.Interfaces;
@@ -87,6 +88,73 @@ public class OpenAILLMService : ILLMService
 
             throw new AiUnavailableAppException("The AI service could not be reached. Try again shortly.");
         }
+    }
+
+    public async IAsyncEnumerable<LlmChunk> StreamAsync(
+        LlmPrompt prompt,
+        [EnumeratorCancellation] CancellationToken cancellationToken = default)
+    {
+        var updates = _client.Value.CompleteChatStreamingAsync(
+            [
+                new SystemChatMessage(prompt.System),
+                new UserChatMessage(prompt.User)
+            ],
+            new ChatCompletionOptions { Temperature = 0.2f },
+            cancellationToken);
+
+        // Enumerated by hand because a yield cannot sit inside a try/catch, and the provider's
+        // failures arrive from the enumerator: the first move is where the request is actually made,
+        // so a rejected key or a rate limit surfaces there rather than at the call above.
+        await using var updateStream = updates.GetAsyncEnumerator(cancellationToken);
+
+        var written = 0;
+
+        while (true)
+        {
+            StreamingChatCompletionUpdate update;
+
+            try
+            {
+                if (!await updateStream.MoveNextAsync())
+                {
+                    break;
+                }
+
+                update = updateStream.Current;
+            }
+            catch (ClientResultException ex)
+            {
+                _logger.LogError(
+                    ex, "The AI provider rejected a streaming chat request with status {Status}", ex.Status);
+
+                throw new AiUnavailableAppException(Describe(ex.Status));
+            }
+            catch (Exception ex) when (ex is not (OperationCanceledException or AppException))
+            {
+                _logger.LogError(ex, "A streaming chat request failed after {Written} characters", written);
+
+                throw new AiUnavailableAppException(
+                    "The AI service stopped responding. Try again shortly.");
+            }
+
+            var text = string.Concat(update.ContentUpdate.Select(part => part.Text));
+
+            if (text.Length > 0)
+            {
+                written += text.Length;
+
+                yield return new LlmChunk(text);
+            }
+
+            // Sent on the last update, and only by providers configured to report it.
+            if (update.Usage is not null)
+            {
+                yield return new LlmChunk(
+                    string.Empty, update.Usage.InputTokenCount, update.Usage.OutputTokenCount);
+            }
+        }
+
+        _logger.LogInformation("Streamed {Characters} characters from {Model}", written, Model);
     }
 
     private static string Describe(int status) => status switch
