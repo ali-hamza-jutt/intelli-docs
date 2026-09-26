@@ -66,6 +66,9 @@ public static class HardeningExtensions
     }
 
     /// <summary>
+    /// The AI limit sits just under what the provider itself allows a free account per minute, so a
+    /// burst is refused here — with a sentence written for the reader — rather than upstream.
+    ///
     /// Rate limits on the endpoints where abuse is expensive rather than merely rude: uploads write
     /// to storage and start a pipeline, and anything that reaches the AI provider is billed per call.
     ///
@@ -77,7 +80,7 @@ public static class HardeningExtensions
         services.AddRateLimiter(options =>
         {
             options.AddPolicy(UploadPolicy, PerCaller(permitLimit: 20, window: TimeSpan.FromMinutes(1)));
-            options.AddPolicy(AiPolicy, PerCaller(permitLimit: 30, window: TimeSpan.FromMinutes(1)));
+            options.AddPolicy(AiPolicy, PerCaller(permitLimit: 12, window: TimeSpan.FromMinutes(1)));
 
             options.OnRejected = async (context, cancellationToken) =>
             {
