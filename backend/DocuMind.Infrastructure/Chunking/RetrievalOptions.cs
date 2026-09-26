@@ -16,11 +16,17 @@ public class RetrievalOptions
     public int TopK { get; set; } = 5;
 
     /// <summary>
-    /// Cosine similarity a chunk must reach to be returned at all, from 0 (unrelated) to 1
-    /// (identical). Without a floor, a question the documents do not cover still returns the five
-    /// least-unrelated passages, and module 8 would build an answer out of them.
+    /// Cosine similarity a passage must reach to be used at all, from 0 (unrelated) to 1
+    /// (identical).
+    ///
+    /// Measured, not guessed: against gemini-embedding-001, questions the documents answer score
+    /// 67-75% on their best passage, while questions they cannot answer top out around 44%. Half
+    /// sits in that gap with room on both sides. The number belongs to the embedding model, so
+    /// changing AI:EmbeddingModel means measuring it again — a floor that is too low sends an
+    /// unanswerable question to the model anyway, and one that is too high starves a fair question
+    /// of its context.
     /// </summary>
-    public double SimilarityThreshold { get; set; } = 0.25;
+    public double SimilarityThreshold { get; set; } = 0.5;
 
     /// <summary>
     /// How many passages may go into a prompt. Every one costs tokens on every question, and a

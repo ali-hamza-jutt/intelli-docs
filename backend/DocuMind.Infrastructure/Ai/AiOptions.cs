@@ -2,7 +2,14 @@ using DocuMind.Domain.Entities;
 
 namespace DocuMind.Infrastructure.Ai;
 
-/// <summary>The providers <see cref="AiOptions.Provider"/> accepts.</summary>
+/// <summary>
+/// The wire protocols <see cref="AiOptions.Provider"/> accepts.
+///
+/// This names the shape of the API, not the company behind it. "OpenAI" covers every service that
+/// speaks the OpenAI protocol — OpenAI itself, Google's Gemini through its compatibility endpoint,
+/// Azure OpenAI, a gateway, or a model running on this machine. Which one is in use is decided by
+/// <see cref="AiOptions.Endpoint"/>, not here.
+/// </summary>
 public static class AiProviders
 {
     public const string OpenAI = "OpenAI";
@@ -21,12 +28,16 @@ public class AiOptions
 
     public string Provider { get; set; } = AiProviders.OpenAI;
 
-    /// <summary>Cheapest current OpenAI embedding model, and strong enough for document retrieval.</summary>
-    public string EmbeddingModel { get; set; } = "text-embedding-3-small";
+    /// <summary>
+    /// The embedding model. Gemini serves this one on its free tier, and its OpenAI-compatible
+    /// endpoint accepts the same request this app already sends.
+    /// </summary>
+    public string EmbeddingModel { get; set; } = "gemini-embedding-001";
 
     /// <summary>
-    /// Vector length to request. text-embedding-3 models can return a shortened vector, which
-    /// trades a little accuracy for half the storage — 1536 is this model's full width.
+    /// Vector length to request. A model that supports several widths is asked for this one, which
+    /// is what lets the provider change without rebuilding the column the vectors live in. A model
+    /// that answers with a different width is refused by name rather than stored.
     /// </summary>
     public int EmbeddingDimensions { get; set; } = 1536;
 
@@ -34,7 +45,7 @@ public class AiOptions
     /// The model that writes answers. A small, cheap model is enough here: the facts come from the
     /// retrieved passages, and the model's job is to read them and reply, not to know things.
     /// </summary>
-    public string ChatModel { get; set; } = "gpt-4o-mini";
+    public string ChatModel { get; set; } = "gemini-3.5-flash-lite";
 
     /// <summary>
     /// The provider credential. Set in user secrets, never in appsettings.json:
@@ -43,9 +54,9 @@ public class AiOptions
     public string ApiKey { get; set; } = string.Empty;
 
     /// <summary>
-    /// Base address of the provider. Empty means OpenAI itself; set it to point at an
-    /// OpenAI-compatible endpoint instead, such as a gateway, a local model server, or a stub
-    /// while testing.
+    /// Base address of the provider, which is what decides whose models answer. Empty means OpenAI
+    /// itself; the configured value points at Gemini's OpenAI-compatible endpoint, and it can
+    /// equally point at Azure OpenAI, a gateway, a model running on this machine, or a test stub.
     /// </summary>
     public string Endpoint { get; set; } = string.Empty;
 
