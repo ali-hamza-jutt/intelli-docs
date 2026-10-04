@@ -12,7 +12,7 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "DocuMind AI — Your documents, one intelligent workspace",
+  title: "DocuMind AI | Your documents, one intelligent workspace",
   description:
     "Ask in plain language. Get answers grounded in your own files, with the source attached.",
 };

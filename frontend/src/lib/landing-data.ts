@@ -40,9 +40,9 @@ export const PROBLEMS: { icon: IconName; title: string; body: string }[] = [
 ];
 
 export const STEPS: { num: string; title: string; body: string; icon: IconName }[] = [
-  { num: "01 — UPLOAD", title: "Upload", body: "PDF, DOCX, and TXT files up to 20MB.", icon: "upload" },
-  { num: "02 — UNDERSTAND", title: "Understand", body: "Documents are read and indexed by meaning.", icon: "sparkles" },
-  { num: "03 — ASK", title: "Ask", body: "Answers arrive with the page they came from.", icon: "message" },
+  { num: "01 UPLOAD", title: "Upload", body: "PDF, DOCX, and TXT files up to 20MB.", icon: "upload" },
+  { num: "02 UNDERSTAND", title: "Understand", body: "Documents are read and indexed by meaning.", icon: "sparkles" },
+  { num: "03 ASK", title: "Ask", body: "Answers arrive with the page they came from.", icon: "message" },
 ];
 
 export const PIPELINE: { icon: IconName; label: string }[] = [

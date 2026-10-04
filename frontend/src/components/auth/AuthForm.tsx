@@ -155,7 +155,7 @@ export function AuthForm({
             <span className="h-px flex-1 bg-line" />
           </div>
           <button disabled className="btn btn-disabled btn-md w-full font-medium">
-            Single sign-on — coming soon
+            Single sign-on (coming soon)
           </button>
         </>
       )}
