@@ -83,6 +83,7 @@ export function ChatComposer({
                 label="Document to ask about"
                 value={documentId ?? ""}
                 onChange={(e) => onDocumentChange(e.target.value)}
+                disabled={pending}
                 className="max-w-[200px] px-2.5 py-1.5 text-caption text-muted"
               >
                 <option value="" disabled>
@@ -112,7 +113,7 @@ export function ChatComposer({
               <button
                 type="submit"
                 aria-label="Send"
-                disabled={!documentId}
+                disabled={!documentId || !value.trim()}
                 className="btn btn-primary inline-flex size-9 items-center justify-center p-0 text-lg disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <Icon name="send" />
