@@ -65,11 +65,11 @@ export function useUploadDocument() {
 
         if (ticket) {
           // ---- 2. straight to the provider ------------------------------------
-          await sendToProvider(file, ticket, requestRef, setProgress);
+          const publicId = await sendToProvider(file, ticket, requestRef, setProgress);
 
           // ---- 3. register it -------------------------------------------------
           document = await callApi<DocumentResponse>("/api/Documents/confirm", {
-            publicId: ticket.publicId,
+            publicId,
             fileName: file.name,
           });
         } else {
@@ -138,7 +138,7 @@ function sendToProvider(
   ticket: UploadTicketResponse,
   requestRef: React.RefObject<XMLHttpRequest | null>,
   onProgress: (percent: number) => void,
-): Promise<void> {
+): Promise<string> {
   return new Promise((resolve, reject) => {
     const request = new XMLHttpRequest();
     requestRef.current = request;
@@ -153,7 +153,32 @@ function sendToProvider(
 
     request.onload = () => {
       if (request.status >= 200 && request.status < 300) {
-        resolve();
+        // Raw uploads can add a file extension to the requested id. Confirm the id that actually
+        // landed; the API still checks ownership and reads the metadata from the provider itself.
+        try {
+          const uploaded: unknown = JSON.parse(request.responseText);
+
+          if (
+            typeof uploaded === "object" &&
+            uploaded !== null &&
+            "public_id" in uploaded &&
+            typeof uploaded.public_id === "string" &&
+            uploaded.public_id.trim().length > 0
+          ) {
+            resolve(uploaded.public_id);
+            return;
+          }
+        } catch {
+          // A success status without a usable id cannot be confirmed.
+        }
+
+        reject(
+          new ApiError(
+            request.status,
+            "The storage provider did not return an upload ID. Please try again.",
+            "INVALID_UPLOAD_RESPONSE",
+          ),
+        );
         return;
       }
 

@@ -48,10 +48,13 @@ public class CloudinaryDirectUploadService : IDirectUploadService
 
     public UploadTicket CreateTicket(Guid userId, string fileName)
     {
-        // The folder carries the owner, so a public id is self-describing: documind/<user>/<guid>.
+        // Raw assets include the file extension in their public id. If we omit it, Cloudinary
+        // appends it during upload and looking up the ticket's original id returns 404.
+        // The folder carries the owner: documind/<user>/<guid>.pdf.
         // BelongsToUser reads that back, which is what stops one user confirming another's asset.
         var folder = FolderFor(userId);
-        var publicId = $"{folder}/{Guid.NewGuid():N}";
+        var extension = Path.GetExtension(fileName).ToLowerInvariant();
+        var publicId = $"{folder}/{Guid.NewGuid():N}{extension}";
         var timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
 
         // Cloudinary's scheme: take every parameter the client will send except file, api_key,
