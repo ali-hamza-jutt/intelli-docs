@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Card, ListCard } from "@/components/ui/Card";
@@ -16,11 +16,17 @@ import { isInProgress, shouldPoll } from "@/lib/documentStatus";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { formatDate } from "@/lib/format";
 import { SUGGESTIONS } from "@/lib/data";
+import { Select } from "@/components/ui/Field";
+import { dashboardChatUrl, selectedReadyDocument } from "@/lib/chatEntry";
 
 const POLL_MS = 3000;
 
 export default function DashboardPage() {
   const [question, setQuestion] = useState("");
+  const [selectedDocumentId, setSelectedDocumentId] = useState("");
+  const [openingChat, startOpeningChat] = useTransition();
+  const launchRef = useRef(false);
+  const documentSelectRef = useRef<HTMLDivElement>(null);
   const [uploadOpen, setUploadOpen] = useState(false);
   const router = useRouter();
   const { user } = useAuth();
@@ -48,11 +54,25 @@ export default function DashboardPage() {
   }, [documents.data]);
 
   const recent = (documents.data ?? []).slice(0, 4);
+  const ready = (documents.data ?? []).filter((document) => document.status === "Completed");
+  const selectedDocument = selectedReadyDocument(documents.data ?? [], selectedDocumentId);
   const firstName = user?.name.split(" ")[0] ?? "there";
 
+  useEffect(() => {
+    if (!openingChat) launchRef.current = false;
+  }, [openingChat]);
+
   const ask = (text: string) => {
-    if (!text.trim()) return;
-    router.push(`/chat?q=${encodeURIComponent(text.trim())}`);
+    if (!text.trim() || launchRef.current) return;
+    setQuestion(text);
+    if (!selectedDocument) {
+      documentSelectRef.current?.querySelector("select")?.focus();
+      return;
+    }
+    launchRef.current = true;
+    startOpeningChat(() => {
+      router.push(dashboardChatUrl(selectedDocument.id, text, crypto.randomUUID()));
+    });
   };
 
   return (
@@ -66,7 +86,7 @@ export default function DashboardPage() {
       <Card className="p-[22px] shadow-card">
         <div className="mb-3.5 flex items-center gap-2.5">
           <Icon name="sparkles" className="text-[17px] text-brand" />
-          <h3 className="card-title">Ask your knowledge base</h3>
+          <h3 className="card-title">Ask about a document</h3>
         </div>
 
         <form
@@ -79,20 +99,44 @@ export default function DashboardPage() {
           <input
             value={question}
             onChange={(e) => setQuestion(e.target.value)}
-            aria-label="Ask anything about your documents"
-            placeholder="Ask anything about your documents…"
+            aria-label="Your question"
+            placeholder="What would you like to know?"
             className="field min-w-[220px] flex-1 px-[15px] py-[13px] text-lead"
           />
-          <Button type="submit" size="lg" trailingIcon="arrowRight" className="px-5 py-[13px]">
-            Ask AI
+          <div ref={documentSelectRef} className="min-w-[200px] flex-1 sm:max-w-[280px]">
+            <Select
+              label="Document to ask about"
+              value={selectedDocument?.id ?? ""}
+              onChange={(event) => setSelectedDocumentId(event.target.value)}
+              disabled={documents.isPending || ready.length === 0 || openingChat}
+              className="h-full min-h-[48px] w-full"
+            >
+              <option value="" disabled>Choose a document</option>
+              {ready.map((document) => (
+                <option key={document.id} value={document.id}>{document.fileName}</option>
+              ))}
+            </Select>
+          </div>
+          <Button type="submit" size="lg" trailingIcon="arrowRight" className="px-5 py-[13px]"
+            disabled={!question.trim() || !selectedDocument || openingChat}>
+            {openingChat ? "Opening chat…" : "Ask AI"}
           </Button>
         </form>
+
+        <p className="mt-2.5 mb-0 text-caption text-muted" role="status">
+          {documents.isPending ? "Loading your documents…" : documents.isError ? (
+            <>Documents could not be loaded. <button className="link-action" onClick={() => documents.refetch()}>Try again</button></>
+          ) : ready.length === 0 ? (
+            <>A processed document is needed to ask a question. <button className="link-action" onClick={() => setUploadOpen(true)}>Upload a document</button> or <Link className="link-action" href="/documents">check processing</Link>. Your question will stay here.</>
+          ) : selectedDocument ? "Starts a new conversation and sends your question." : "Choose a processed document to send your question."}
+        </p>
 
         <div className="mt-3.5 flex flex-wrap gap-2">
           {SUGGESTIONS.map((text) => (
             <button
               key={text}
               onClick={() => ask(text)}
+              disabled={openingChat}
               className="cursor-pointer rounded-control border border-line bg-canvas px-3 py-1.5 text-caption text-muted transition-colors hover:border-brand-border hover:bg-brand-soft hover:text-brand"
             >
               {text}
