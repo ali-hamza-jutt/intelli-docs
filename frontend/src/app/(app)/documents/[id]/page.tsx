@@ -134,8 +134,8 @@ export default function DocumentDetailPage({ params }: { params: Promise<{ id: s
     ["Size", formatBytes(doc.fileSize)],
     ["Uploaded", formatDate(doc.createdAt)],
     ["Status", status.label],
-    ["Processed", doc.processedAt ? formatDate(doc.processedAt) : "—"],
-    ["Chunks", chunkSummary.data ? chunkSummary.data.totalCount.toLocaleString() : "—"],
+    ["Processed", doc.processedAt ? formatDate(doc.processedAt) : "Not available"],
+    ["Chunks", chunkSummary.data ? chunkSummary.data.totalCount.toLocaleString() : "Not available"],
   ];
 
   return (

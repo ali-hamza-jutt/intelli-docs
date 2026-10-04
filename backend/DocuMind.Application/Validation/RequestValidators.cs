@@ -163,7 +163,7 @@ internal static class SharedRules
         return rule
             .NotEmpty().WithMessage("Type a question first.")
             .MinimumLength(3).WithMessage("That question is too short.")
-            .MaximumLength(2000).WithMessage("That question is too long — try asking it in fewer words.")
+            .MaximumLength(2000).WithMessage("That question is too long. Try asking it in fewer words.")
             .Must(question => question.Any(char.IsLetterOrDigit))
             .WithMessage("That question needs some words in it.");
     }

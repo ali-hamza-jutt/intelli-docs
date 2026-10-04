@@ -73,7 +73,7 @@ export function UploadedPanel({
 
       {working && (
         <p className="mt-2 mb-0 text-tiny text-subtle">
-          You can close this — processing continues in the background.
+          You can close this. Processing continues in the background.
         </p>
       )}
 

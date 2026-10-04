@@ -105,7 +105,7 @@ function UsageTab() {
         <Icon name="sparkles" className="mt-0.5 flex-none text-md text-subtle" />
         <p className="m-0">
           A question costs roughly the passages it is answered from plus the answer. Asking about a
-          document your library does not cover costs nothing at all — nothing is sent to the model.
+          document your library does not cover costs nothing at all. Nothing is sent to the model.
         </p>
       </div>
     </Card>
@@ -157,7 +157,7 @@ export default function SettingsPage() {
           // Changing the password revokes every refresh token, this browser's included, so the
           // session is already gone server-side. Signing out here makes the client agree with that
           // rather than waiting for the next call to fail.
-          toast("Password updated — please sign in again");
+          toast("Password updated. Please sign in again");
           await signOut();
           router.push("/login");
         },

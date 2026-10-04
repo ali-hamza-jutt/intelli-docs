@@ -66,7 +66,7 @@ function UploadFlow({ onClose }: { onClose: () => void }) {
       const document = await upload(candidate);
       setUploaded(document);
       setPhase("done");
-      toast("Upload complete — processing started");
+      toast("Upload complete. Processing started");
     } catch (cause) {
       if (cause instanceof ApiError && cause.errorCode === "UPLOAD_CANCELLED") {
         setPhase("idle");
